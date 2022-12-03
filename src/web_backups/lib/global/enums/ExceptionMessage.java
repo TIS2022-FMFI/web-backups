@@ -1,11 +1,10 @@
-package web_backups.lib.global.exceptions;
+package web_backups.lib.global.enums;
 
 /**
  *
  * */
 public enum ExceptionMessage {
-    TEST("Test error message"), // test
-    TEST_FORMAT("Use string.format for string %s"); // test
+    INVALID_COMMAND("Not a Valid command");
 
     private final String errorMsg;
 
