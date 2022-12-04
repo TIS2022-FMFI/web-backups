@@ -1,12 +1,16 @@
 package web_backups.main;
 
-import web_backups.lib.global.exceptions.NoValidDataException;
+import web_backups.main.ui.AppRun;
 
-import static web_backups.lib.global.exceptions.ExceptionMessage.TEST_FORMAT;
+import java.io.IOException;
 
+/**
+ * This method is used to run the CLI
+ * DO NOT CHANGE THIS!
+ */
 public class Main {
-    public static void main(String[] args) {
-//        throw new NoValidDataException(ExceptionMessage.TEST.getErrorMsg());
-        throw new NoValidDataException(String.format(TEST_FORMAT.getErrorMsg(), "added String to format"));
+    public static void main(String[] args) throws IOException, InterruptedException {
+        AppRun application = new AppRun();
+        application.run();
     }
 }
