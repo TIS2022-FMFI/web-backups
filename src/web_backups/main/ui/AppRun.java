@@ -1,7 +1,8 @@
 package web_backups.main.ui;
 
 import web_backups.lib.global.exceptions.NoValidDataException;
-import web_backups.main.ui.MenuOptions.Help;
+import web_backups.main.ui.mailSender.MailSender;
+import web_backups.main.ui.menuOptions.Help;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,30 +10,33 @@ import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 
 import static web_backups.lib.global.enums.ExceptionMessage.INVALID_COMMAND;
+import static web_backups.lib.global.enums.ExceptionMessage.INVALID_OPTION;
 import static web_backups.lib.global.enums.TextColors.*;
 
 public class AppRun {
     private boolean isRunning = false;
     private static final String HELP = "wb help";
+    private static final String EXIT = "wb exit";
 
     /**
-     * This method is used in app start or via user request by typing <b>wb help</b>
+     * This method is used in app start or via user request by typing <b>wb help</b> and help options.
+     * @param command The input line to be used
      */
-    //TODO: the parser should be used here as well to differentiate whether to show only commands or just a command and it's flags, params, etc.
     private void showMenu(String command) {
-        Help.getInstance().getDefault();
-        // TODO: make other calls for each type!
-        // i.e:
-//        if (HELP.equals(command)) {
-//            Help.getInstance().getDefault();
-//            return;
-//        }
+        if (HELP.equals(command)) {
+            Help.getInstance().getDefault();
+            return;
+        }
+
+        Help.getInstance().matchCodeByEnum(command);
     }
 
     /**
      * This method is used to run proper command from the list. <br>
      * i.e. provide backup, restore, etc. <br>
      * default should represent a warning/error based on the input
+     * @param command The type of CLI command
+     * @param line user input
      */
     public void getOption(String command, String line) {
         try {
@@ -42,7 +46,7 @@ public class AppRun {
                     break;
                 case "other":
                     break;
-                case "wb exit":
+                case EXIT:
                     System.out.println(SUCCESS.getColor() + "EXITING APPLICATION! " + RESET.getColor());
                     isRunning = false;
                     break;
@@ -51,7 +55,7 @@ public class AppRun {
                     break;
             }
         } catch (Exception e) {
-            throw new NoValidDataException(INVALID_COMMAND.getErrorMsg()); // TODO CREATE EXCEPTION
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
     }
 
@@ -69,14 +73,12 @@ public class AppRun {
             if (newLine == null) {
                 return;
             }
-            parseCommand(newLine);
+            parseCommand(newLine); // TODO: Replace
         }
     }
 
     /**
      * TODO line parsing. The functionality should be provided by a parser via separate module.
-     * replace the getOption(line) by getOption(command, option) call with entering the command and option to be used.
-     * i.e.
      */
     public void parseCommand(String line) throws InterruptedException {
         if (line.isEmpty()) {
@@ -85,6 +87,11 @@ public class AppRun {
         String option = line; // TODO: CREATE PARSER FOR THIS! Should either return the parsed value or call the option.
         getOption(option, line);
         TimeUnit.MILLISECONDS.sleep(500); // testing purpose, will be removed.
+    }
+
+    private void sendMail(String from, String to, String host, String subject, String msg) {
+        MailSender ms = new MailSender(from, to, host, subject, msg);
+        ms.sendMail();
     }
 
 }

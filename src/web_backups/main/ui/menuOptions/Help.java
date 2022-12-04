@@ -1,5 +1,8 @@
-package web_backups.main.ui.MenuOptions;
+package web_backups.main.ui.menuOptions;
 
+import web_backups.lib.global.enums.HelpDetails;
+
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -63,33 +66,15 @@ public class Help {
         System.out.println(sb);
     }
 
-    // TODO
-    private void getHelpBackup() {
-
-    }
-
-    // TODO
-    private void getHelpRestore() {
-
-    }
-
-    // TODO
-    private void getHelpSet() {
-
-    }
-
-    // TODO
-    private void getHelpList() {
-
-    }
-
-    // TODO
-    private void getHelpDisable() {
-
-    }
-
-    // TODO
-    private void getHelpEnable() {
-
+    public void matchCodeByEnum(String code) {
+        if (code == null) {
+            return;
+        }
+        for (HelpDetails detail: Arrays.asList(LIST_DETAILS, BACKUP_DETAILS, RESTORE_DETAILS,
+                RESTORE_FILE_DETAILS, ENABLE_DETAILS, DISABLE_DETAILS, SET_DETAILS)) {
+            if (detail.getType().equals(code)) {
+                System.out.println(detail.getSpecifiedDetail());
+            }
+        }
     }
 }
