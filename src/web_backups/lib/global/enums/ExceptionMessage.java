@@ -4,7 +4,7 @@ package web_backups.lib.global.enums;
  *
  * */
 public enum ExceptionMessage {
-	INVALID_SESSION("Not a Valid command"),
+	INVALID_SESSION("Not a Valid session"),
     INVALID_COMMAND("Not a Valid command"),
     INVALID_OPTION("This option is not valid in the scope.");
 
