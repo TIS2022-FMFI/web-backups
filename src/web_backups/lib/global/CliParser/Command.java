@@ -1,7 +1,9 @@
 package web_backups.lib.global.CliParser;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
@@ -9,12 +11,15 @@ import java.util.function.Consumer;
  */
 public final class Command {
 
-    private String name;
-    private String shortName;
-    private String usage;
-    private List<Flag> flags;
-    private Flag arg;
-    private Consumer<Context> executor;
+    private final String name;
+    private final String shortName;
+    private final String usage;
+
+    private final Boolean hasMutuallyExclusiveParameters;
+    private final List<Flag> flags;
+    //private Flag arg;
+    private final Map<Integer, CommandArgument> args;
+    private final Consumer<Context> executor;
 
     public String getName() {
         return name;
@@ -32,8 +37,27 @@ public final class Command {
         return flags;
     }
 
-    public Flag getArg() {
-        return arg;
+    public Boolean getHasMutuallyExclusiveParameters() {
+        return hasMutuallyExclusiveParameters;
+    }
+
+    public Integer numberOfRequiredArgs() {
+        Integer result = 0;
+        for (CommandArgument cmdArg: args.values()) {
+            if (cmdArg.getIsRequired() == true){
+                result++;
+            }
+        }
+        return result;
+    }
+
+    public CommandArgument getArg(Integer position) {
+        // TODO: NULL?
+        return args.get(position);
+    }
+
+    public Map<Integer, CommandArgument> getArgs() {
+        return args;
     }
 
     public void execute(Context context) {
@@ -43,15 +67,17 @@ public final class Command {
     private Command(String name,
                     String shortName,
                     String usage,
-                    Flag arg,
+                    Map<Integer, CommandArgument> args,
                     List<Flag> flags,
                     Consumer<Context> executor,
-                    HelpPrinter<Command> helpPrinter) {
+                    HelpPrinter<Command> helpPrinter,
+                    Boolean hasMutuallyExclusiveParameters) {
         this.name = name;
         this.shortName = shortName;
         this.usage = usage;
         this.flags = flags;
-        this.arg = arg;
+        this.args = args;
+        this.hasMutuallyExclusiveParameters = hasMutuallyExclusiveParameters;
         this.executor = new HelpPrinterExecutor(helpPrinter, this, executor);
     }
 
@@ -68,9 +94,12 @@ public final class Command {
         private String name;
         private String shortName;
         private String usage;
+
+        private Boolean hasMutuallyExclusiveParameters;
         private List<Flag> flags = new LinkedList<>();
+        private Map<Integer, CommandArgument> args = new HashMap<>();
         private Consumer<Context> executor;
-        private Flag arg;
+        //private Flag arg;
         private HelpPrinter<Command> helpPrinter = HelpPrinter.HELP_PRINTER_CMD;
 
         public CommandBuilder setName(String name) {
@@ -88,8 +117,8 @@ public final class Command {
             return this;
         }
 
-        public CommandBuilder setArg(Flag arg) {
-            this.arg = arg;
+        public CommandBuilder addArg(Integer position, CommandArgument arg) {
+            this.args.put(position, arg);
             return this;
         }
 
@@ -103,13 +132,18 @@ public final class Command {
             return this;
         }
 
+        public CommandBuilder setHasMutuallyExclusiveParameters(Boolean hasMutuallyExclusiveParameters) {
+            this.hasMutuallyExclusiveParameters = hasMutuallyExclusiveParameters;
+            return this;
+        }
+
         public CommandBuilder setHelpPrinter(HelpPrinter<Command> helpPrinter) {
             this.helpPrinter = helpPrinter;
             return this;
         }
 
         public Command build() {
-            return new Command(name, shortName, usage, arg, flags, executor, helpPrinter);
+            return new Command(name, shortName, usage, args, flags, executor, helpPrinter, hasMutuallyExclusiveParameters);
         }
     }
 
@@ -125,12 +159,16 @@ public final class Command {
             this.command = command;
         }
 
+        public void printHelp(){
+            helpPrinter.print(command, System.out);
+        }
+
         @Override
         public void accept(Context context) {
-//            if (context.hasCommand()) {
-//                helpPrinter.print(command, System.out);
-//                return;
-//            }
+            if (context.getFlagValue(Parser.FLAG_HELP)) {
+                printHelp();
+                return;
+            }
             delegate.accept(context);
         }
     }

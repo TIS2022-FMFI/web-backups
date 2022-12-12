@@ -1,6 +1,8 @@
 package web_backups.lib.global.CliParser;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -11,24 +13,26 @@ public final class Context {
 
     private final Parser parser;
     private final Command command;
-    private final Map<Flag, String> values;
-    private final String arg;
-
-    public String getArg() {
-        return arg;
+    private final Map<Flag, String> flags;
+    //private final String arg;
+    private final Map<Integer, CommandArgument> args;
+    public CommandArgument getArg(Integer position) {
+        return args.get(position);
     }
+    public Map<Integer, CommandArgument> getArgs() { return args; }
 
     public <T> T getFlagValue(Flag<T> flag) {
-        String valStr = values.get(flag);
+        String valStr = flags.get(flag);
         if (valStr != null) {
             return flag.convert(valStr);
         }
         return flag.getDefaultValue();
     }
 
+
     public Map<String, String> getFlagValues() {
-        return values.entrySet().stream()
-                .map(entry -> new HashMap.SimpleEntry<>(entry.getKey().getName(), entry.getValue()))
+        return flags.entrySet().stream()
+                .map(entry -> new HashMap.SimpleEntry<>(entry.getKey().getShortName(), entry.getValue()))
                 .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
     }
 
@@ -36,11 +40,11 @@ public final class Context {
         return command != null;
     }
 
-    private Context(Parser parser, Command command, String arg, Map<Flag, String> values) {
+    private Context(Parser parser, Command command, Map<Integer, CommandArgument> args, Map<Flag, String> flags) {
         this.parser = parser;
         this.command = command;
-        this.arg = arg;
-        this.values = values;
+        this.args = args;
+        this.flags = flags;
     }
 
     @Override
@@ -48,8 +52,8 @@ public final class Context {
         final StringBuilder sb = new StringBuilder("Context{");
         sb.append("app=").append(parser);
         sb.append(", command=").append(command);
-        sb.append(", values=").append(values);
-        sb.append(", arg='").append(arg).append('\'');
+        sb.append(", flags=").append(flags);
+        sb.append(", args='").append(args).append('\'');
         sb.append('}');
         return sb.toString();
     }
@@ -61,7 +65,9 @@ public final class Context {
     public final static class ContextBuilder {
 
         private Parser parser;
-        private Map<Flag, String> values = new HashMap<>();
+
+        private Map<Flag, String> flags = new HashMap<>();
+        private Map<Integer, CommandArgument> args = new HashMap<Integer, CommandArgument>();
         private Command command;
         private String arg;
 
@@ -83,13 +89,23 @@ public final class Context {
             return this;
         }
 
-        public ContextBuilder addValue(Flag flag, String value) {
-            values.put(flag, value);
+        public ContextBuilder addArg(Integer position, CommandArgument value) {
+            this.args.put(position, value);
+            return this;
+        }
+
+//        public ContextBuilder addValue(Flag flag, String value) {
+//            values.put(flag, value);
+//            return this;
+//        }
+
+        public ContextBuilder addFlag(Flag flag, String value) {
+            flags.put(flag, value);
             return this;
         }
 
         public Context build() {
-            return new Context(parser, command, arg, values);
+            return new Context(parser, command, args, flags);
         }
 
 

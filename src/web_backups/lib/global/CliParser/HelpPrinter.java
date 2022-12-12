@@ -19,9 +19,9 @@ public interface HelpPrinter<T> {
         formatter.format("%s\n", parser.getUsage());
         formatter.format("\n");
         formatter.format("Usage:\n");
-        formatter.format("\t%s [options]\n", parser.getName());
+        formatter.format("\t%s [commands]\n", parser.getName());
         formatter.format("\n");
-        formatter.format("Options:\n");
+        formatter.format("Global app flags:\n");
         parser.getFlags().forEach(f -> {
             formatter.format("\t%-20s%s\n", concat(prefix("-", f.getShortName()), prefix("--", f.getName())), f.getUsage());
         });
@@ -38,12 +38,18 @@ public interface HelpPrinter<T> {
         formatter.format("\t%s - %s\n", cmd.getName(), cmd.getUsage());
         formatter.format("Usage:\n");
         if (cmd.getFlags().isEmpty()) {
-            formatter.format("\t%s [arguments...]\n", cmd.getName());
+            formatter.format("\t%s [parameters...]\n", cmd.getName());
         } else {
-            formatter.format("\t%s [command options] [arguments...]\n", cmd.getName());
-            formatter.format("Options:\n");
+            formatter.format("\t%s [parameters...] [flags]\n", cmd.getName());
+            formatter.format("Flags:\n");
             cmd.getFlags().forEach(f -> {
-                formatter.format("\t%-20s%s\n", concat(prefix("-", f.getShortName()), prefix("--", f.getName())), f.getUsage());
+                formatter.format("\t%-30s%s\n", concat(prefix("-", f.getShortName()), prefix("--", f.getName())), f.getUsage());
+            });
+        }
+        if(!cmd.getArgs().isEmpty()) {
+            formatter.format("Parameters:\n");
+            cmd.getArgs().values().forEach(f -> {
+                formatter.format("\t%s%-30s\n", f.getIsRequired() ? "": "(Optional) ", f.getName());
             });
         }
     };

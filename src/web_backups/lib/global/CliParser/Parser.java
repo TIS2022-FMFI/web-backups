@@ -1,22 +1,22 @@
 package web_backups.lib.global.CliParser;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static web_backups.lib.global.enums.ExceptionMessage.INVALID_COMMAND;
+import static web_backups.lib.global.enums.TextColors.ERROR;
+import static web_backups.lib.global.enums.TextColors.RESET;
 
 
 public final class Parser {
 
-//    static final BooleanFlag FLAG_HELP = BooleanFlag.builder()
-//            .setName("help")
-//            .setShortName("h")
-//            .setUsage("These are common commands used in various situations:")
-//            .build();
-//
+    static final BooleanFlag FLAG_HELP = BooleanFlag.builder()
+            .setName("help")
+            .setShortName("h")
+            .setUsage("Display help information about web-backups app")
+            .build();
+
 
     private final String name;
     private final String usage;
@@ -61,15 +61,24 @@ public final class Parser {
             helpPrinter.print(this, System.out);
             return;
         }
+
+        String arg = arguments.next();
+        if (!Objects.equals(arg, "wb")) {
+            throw new IllegalArgumentException("Commands must start with 'wb'");
+        }
         Context.ContextBuilder contextBuilder = Context.builder().setApp(this);
         while (arguments.hasNext()) {
-            String arg = arguments.next();
+            arg = arguments.next();
             if (!parseFlag(arg, arguments, contextBuilder, flags) &&
                     !parseCommand(arg, arguments, contextBuilder, flags)) {
                 throw new IllegalArgumentException("Illegal argument " + arg);
             }
         }
         Context ctx = contextBuilder.build();
+        // no command, print app help
+        if (!ctx.hasCommand()) {
+            helpPrinter.print(this, System.out);
+        }
     }
 
     private boolean parseCommand(String arg,
@@ -80,22 +89,48 @@ public final class Parser {
         if (cmdOpt.isPresent()) {
             Command cmd = cmdOpt.get();
             contextBuilder.setCommand(cmd);
+            HelpPrinter<Command> cmdHelpPrinter = HelpPrinter.HELP_PRINTER_CMD;
             List<Flag> allFlags = concat(flags, cmd.getFlags());
+            Integer argumentsRequired = cmd.numberOfRequiredArgs();
+            Integer positionIndex = 0;
+            Integer numberOfArguments = 0;
+            Boolean helpDetected = false;
             while (arguments.hasNext()) {
-                String cmdArg = arguments.next();
-                if (!parseFlag(cmdArg, arguments, contextBuilder, allFlags)) {
-                    if (cmd.getArg() != null) {
-                        contextBuilder.setArg(cmdArg);
+                positionIndex++;
+                String strArg = arguments.next();
+                if(Objects.equals(strArg, "-h") || Objects.equals(strArg, "--help")) {
+                    cmdHelpPrinter.print(cmd, System.out);
+                    return true;
+                }
+                if (!parseFlag(strArg, arguments, contextBuilder, allFlags)) {
+                    CommandArgument cmdArg = cmd.getArg(positionIndex);
+                    if (cmdArg != null) {
+                        CommandArgument newArg = (CommandArgument.builder()
+                                        .setName(cmdArg.getName())
+                                        .setPosition(positionIndex)
+                                        .setValue(strArg)
+                                        .setIsRequired(cmdArg.getIsRequired()))
+                                        .build();
+
+                        contextBuilder.addArg(positionIndex, newArg);
+                        numberOfArguments++;
                     } else {
-                        throw new IllegalArgumentException("Unexpected argument " + cmdArg);
+                        throw new IllegalArgumentException("Unexpected argument " + strArg);
                     }
                 }
+            }
+            if (numberOfArguments < argumentsRequired) {
+                System.out.println(ERROR.getColor() + "Not all required parameters were set" + RESET.getColor());
+                cmdHelpPrinter.print(cmd, System.out);
+                return true;
             }
             cmd.execute(contextBuilder.build());
             return true;
         }
         return false;
     }
+
+
 
     private boolean parseFlag(String arg,
                               Arguments arguments,
@@ -108,14 +143,9 @@ public final class Parser {
             }
             if (flag.get() instanceof BooleanFlag) {
                 // boolean flag can be without the value
-                contextBuilder.addValue(flag.get(), "true");
-                return true;
-            } else if (arguments.hasNext() && !Flag.isFlag(arguments.peek())) {
-                // next is available and it is not flag
-                contextBuilder.addValue(flag.get(), arguments.next());
+                contextBuilder.addFlag(flag.get(), "true");
                 return true;
             }
-            throw new IllegalArgumentException("Missing value for flag " + flag.get().getName());
         }
         return false;
     }
@@ -141,7 +171,8 @@ public final class Parser {
         private HelpPrinter<Parser> helpPrinter = HelpPrinter.HELP_PRINTER_APP;
 
         private ParserBuilder() {
-
+            // always add help flag
+            flags.add(FLAG_HELP);
         }
 
         public ParserBuilder setName(String name) {

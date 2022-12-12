@@ -1,7 +1,6 @@
 package web_backups.main.ui;
 
-import web_backups.lib.global.CliParser.Command;
-import web_backups.lib.global.CliParser.Parser;
+import web_backups.lib.global.CliParser.*;
 import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.main.ui.mailSender.MailSender;
 import web_backups.main.ui.menuOptions.Help;
@@ -9,8 +8,7 @@ import web_backups.main.ui.menuOptions.Help;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static web_backups.lib.global.enums.ExceptionMessage.INVALID_COMMAND;
@@ -49,47 +47,181 @@ public class AppRun {
 
     private List<Command> initializeCommands(){
         List<Command> commandList = new ArrayList<>();
+        Map<String, CommandArgument> args = initializeArguments();
+        Map<String, BooleanFlag> flags = initializeFlags();
         commandList.add(Command.builder()
-                .setName("list")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setName("list-backups")
+                .setUsage("Output a list of backups. In default, it’ll list all backups from the local server. If the site name is set, only its backups will be listed.")
+                .addArg(1, args.get("*[site_name]"))
+                .addFlag(flags.get("-f"))
+                .addFlag(flags.get("-i"))
+                .addFlag(flags.get("-b"))
+                .setExecutor(this::listBackups)
+                .build());
+        commandList.add(Command.builder()
+                .setName("list-sites")
+                .setUsage("Output the list of all configured sites of all local servers that share storage server with this local server.")
+                .addFlag(flags.get("-e"))
+                .addFlag(flags.get("-d"))
+                .setExecutor(this::listSites)
                 .build());
         commandList.add(Command.builder()
                 .setName("backup")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setUsage("Manually runs the backup of a specific site")
+                .addArg(1, args.get("[site_name]"))
+                .addFlag(flags.get("-i"))
+                .setExecutor(this::backup)
                 .build());
         commandList.add(Command.builder()
                 .setName("restore")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setUsage("Restores a specific site by writing its name and specifying the backup_id")
+                .addArg(1, args.get("[site_name]"))
+                .addArg(2, args.get("[backup_id]"))
+                .setExecutor(this::restore)
                 .build());
         commandList.add(Command.builder()
-                .setName("fileRestore")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setName("restore-files")
+                .setUsage("Restores specific file(s) (if exists) from a .txt file")
+                .addArg(1, args.get("[file.txt]"))
+                .addArg(2, args.get("[file_path]"))
+                .setExecutor(this::restoreFiles)
                 .build());
         commandList.add(Command.builder()
                 .setName("enable")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setUsage("Enables site by adding or removing a link to the sites-enabled folder")
+                .addArg(1, args.get("[site_name]"))
+                .setExecutor(this::enable)
                 .build());
         commandList.add(Command.builder()
                 .setName("disable")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setUsage("Disables site by adding or removing a link to the sites-enabled folder ")
+                .addArg(1, args.get("[site_name]"))
+                .setExecutor(this::disable)
                 .build());
         commandList.add(Command.builder()
-                .setName("set")
-                .setUsage("NOT IMPLEMENTED YET")
+                .setName("set-period")
+                .setUsage("Sets the backup period (days)")
+                .addArg(1, args.get("[period]"))
+                .setExecutor(this::setPeriod)
                 .build());
         commandList.add(Command.builder()
-                .setName("help")
-                .setUsage("NOT IMPLEMENTED YET")
-                .setExecutor(ctx -> first(ctx.toString()))
+                .setName("set-switch")
+                .setUsage("Whether to keep backups also on the local server. possible values 0/1 (Bool)")
+                .addArg(1, args.get("[switch]"))
+                .setExecutor(this::setSwitch)
+                .build());
+        commandList.add(Command.builder()
+                .setName("auto")
+                .setUsage("Checks all configs of locally enabled sites and performs backups if needed automatically as requested in site config files")
+                .setExecutor(this::auto)
                 .build());
 
         return commandList;
     }
 
-    private void first(String msg) {
-        System.out.println(msg);
-        showMenu(HELP);
+    private Map<String, CommandArgument> initializeArguments(){
+        Map<String, CommandArgument> args = new HashMap<>();
+        args.put("[site_name]", (CommandArgument.builder()
+                .setName("site_name")
+                .setPosition(1)
+                .setIsRequired(true)
+                .build()));
+        args.put("*[site_name]", (CommandArgument.builder()
+                .setName("site_name")
+                .setPosition(1)
+                .setIsRequired(false)
+                .build()));
+        args.put("[backup_id]", (CommandArgument.builder()
+                .setName("backup_id")
+                .setPosition(2)
+                .setIsRequired(true)
+                .build()));
+        args.put("[file.txt]", (CommandArgument.builder()
+                .setName("file.txt")
+                .setPosition(2)
+                .setIsRequired(true)
+                .build()));
+        args.put("[file_path]", (CommandArgument.builder()
+                .setName("file_path")
+                .setPosition(2)
+                .setIsRequired(true)
+                .build()));
+        args.put("[period]", (CommandArgument.builder()
+                .setName("period")
+                .setPosition(1)
+                .setIsRequired(true)
+                .build()));
+        args.put("[switch]", (CommandArgument.builder()
+                .setName("switch")
+                .setPosition(1)
+                .setIsRequired(true)
+                .build()));
+
+        return args;
     }
+
+    private Map<String, BooleanFlag> initializeFlags(){
+        Map<String, BooleanFlag> flags = new HashMap<>();
+        //flags for "listBackups"
+        // -i also for "backup"
+        flags.put("-i", (BooleanFlag.builder()
+                .setShortName("i")
+                .setUsage("represents an incremental backup")
+                .build()));
+        flags.put("-f", (BooleanFlag.builder()
+                .setShortName("f")
+                .setUsage("represents a full backup")
+                .build()));
+        flags.put("-b", (BooleanFlag.builder()
+                .setShortName("b")
+                .setUsage("lists the backups that are kept on the server")
+                //.setDefaultValue(true)
+                .build()));
+        //flags for "listSites"
+        flags.put("-e", (BooleanFlag.builder()
+                .setShortName("e")
+                .setUsage("lists only enabled sites")
+                .build()));
+        flags.put("-d", (BooleanFlag.builder()
+                .setShortName("d")
+                .setUsage("lists only disabled sites")
+                .build()));
+        return flags;
+    }
+
+
+    private void backup(Context context) {
+        StringBuffer buffer = new StringBuffer();
+        Formatter formatter = new Formatter(buffer, Locale.US);
+        String substr = "";
+        Map<String, String> flags = context.getFlagValues();
+        if(flags.get("i") != null) {
+            substr = " incremental";
+        }
+        formatter.format("Make%s backup with site_name %s ", substr, context.getArg(1).getValue());
+
+        System.out.println("" + formatter);
+    }
+
+    private void restore(Context context) {
+        StringBuffer buffer = new StringBuffer();
+        Formatter formatter = new Formatter(buffer, Locale.US);
+        if (context.getArg(2) == null){
+            formatter.format("Make restore with site_name %s", context.getArg(1).getValue());
+        } else {
+            formatter.format("Make restore with site_name %s and backup_id %s", context.getArg(1).getValue(), context.getArg(2).getValue());
+        }
+        System.out.println("" + formatter);
+    }
+
+    private void listBackups(Context context) {System.out.println("execute!!!!");}
+    private void listSites(Context context) {}
+    private void restoreFiles(Context context) { System.out.println("execute!!!!");}
+    private void enable(Context context) {}
+    private void disable(Context context) {}
+    private void setPeriod(Context context) {}
+    private void setSwitch(Context context) {}
+    private void auto(Context context) {}
 
     /**
      * This method is used to run proper command from the list. <br>
@@ -127,15 +259,15 @@ public class AppRun {
     public void run() throws IOException, InterruptedException {
         isRunning = true;
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        showMenu(HELP);
-        //Parser parser = initializeParser();
+        //showMenu(HELP);
+        Parser parser = initializeParser();
         while (isRunning) {
             String newLine = br.readLine();
             if (newLine == null) {
                 return;
             }
-            //parser.execute(newLine.split(" "));
-            parseCommand(newLine); // TODO: Replace
+            parser.execute(newLine.split(" "));
+            //parseCommand(newLine); // TODO: Replace
         }
     }
 
