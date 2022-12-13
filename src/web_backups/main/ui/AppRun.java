@@ -2,6 +2,7 @@ package web_backups.main.ui;
 
 import web_backups.lib.global.CliParser.*;
 import web_backups.lib.global.exceptions.NoValidDataException;
+import web_backups.main.ui.list.ListUtils;
 import web_backups.main.ui.mailSender.MailSender;
 import web_backups.main.ui.menuOptions.Help;
 
@@ -19,9 +20,11 @@ public class AppRun {
     private boolean isRunning = false;
     private static final String HELP = "wb help";
     private static final String EXIT = "wb exit";
+    private static final String ROOT = "C:\\Users\\Delta\\Desktop\\Programming\\AIN_Data\\TESTING"; // WILL BE REMOVED!
 
     /**
      * This method is used in app start or via user request by typing <b>wb help</b> and help options.
+     *
      * @param command The input line to be used
      */
     private void showMenu(String command) {
@@ -33,7 +36,7 @@ public class AppRun {
         Help.getInstance().matchCodeByEnum(command);
     }
 
-    private Parser initializeParser(){
+    private Parser initializeParser() {
         List<Command> commandList = initializeCommands();
         Parser.ParserBuilder parserBuilder = Parser.builder()
                 .setName("wb")
@@ -45,7 +48,7 @@ public class AppRun {
         return parserBuilder.build();
     }
 
-    private List<Command> initializeCommands(){
+    private List<Command> initializeCommands() {
         List<Command> commandList = new ArrayList<>();
         Map<String, CommandArgument> args = initializeArguments();
         Map<String, BooleanFlag> flags = initializeFlags();
@@ -56,14 +59,26 @@ public class AppRun {
                 .addFlag(flags.get("-f"))
                 .addFlag(flags.get("-i"))
                 .addFlag(flags.get("-b"))
-                .setExecutor(this::listBackups)
+                .setExecutor(ctx -> {
+                    try {
+                        listBackups(ctx);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                })
                 .build());
         commandList.add(Command.builder()
                 .setName("list-sites")
                 .setUsage("Output the list of all configured sites of all local servers that share storage server with this local server.")
                 .addFlag(flags.get("-e"))
                 .addFlag(flags.get("-d"))
-                .setExecutor(this::listSites)
+                .setExecutor(ctx -> {
+                    try {
+                        listSites(ctx);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                })
                 .build());
         commandList.add(Command.builder()
                 .setName("backup")
@@ -119,7 +134,7 @@ public class AppRun {
         return commandList;
     }
 
-    private Map<String, CommandArgument> initializeArguments(){
+    private Map<String, CommandArgument> initializeArguments() {
         Map<String, CommandArgument> args = new HashMap<>();
         args.put("[site_name]", (CommandArgument.builder()
                 .setName("site_name")
@@ -160,7 +175,7 @@ public class AppRun {
         return args;
     }
 
-    private Map<String, BooleanFlag> initializeFlags(){
+    private Map<String, BooleanFlag> initializeFlags() {
         Map<String, BooleanFlag> flags = new HashMap<>();
         //flags for "listBackups"
         // -i also for "backup"
@@ -195,7 +210,7 @@ public class AppRun {
         Formatter formatter = new Formatter(buffer, Locale.US);
         String substr = "";
         Map<String, String> flags = context.getFlagValues();
-        if(flags.get("i") != null) {
+        if (flags.get("i") != null) {
             substr = " incremental";
         }
         formatter.format("Make%s backup with site_name %s ", substr, context.getArg(1).getValue());
@@ -206,7 +221,7 @@ public class AppRun {
     private void restore(Context context) {
         StringBuffer buffer = new StringBuffer();
         Formatter formatter = new Formatter(buffer, Locale.US);
-        if (context.getArg(2) == null){
+        if (context.getArg(2) == null) {
             formatter.format("Make restore with site_name %s", context.getArg(1).getValue());
         } else {
             formatter.format("Make restore with site_name %s and backup_id %s", context.getArg(1).getValue(), context.getArg(2).getValue());
@@ -214,21 +229,63 @@ public class AppRun {
         System.out.println("" + formatter);
     }
 
-    private void listBackups(Context context) {System.out.println("execute!!!!");}
-    private void listSites(Context context) {}
-    private void restoreFiles(Context context) { System.out.println("execute!!!!");}
-    private void enable(Context context) {}
-    private void disable(Context context) {}
-    private void setPeriod(Context context) {}
-    private void setSwitch(Context context) {}
-    private void auto(Context context) {}
+    private void listBackups(Context context) throws IOException {
+        Map<String, String> enteredFlag = context.getFlagValues();
+//        Map<Integer, CommandArgument> args = context.getArgs();
+
+        // TODO: add validation for a single site
+        if (enteredFlag.isEmpty()) {
+            ListUtils.getInstance().listBackups(ROOT, "-b", "");
+        }
+        if (enteredFlag.containsKey("i")) {
+            ListUtils.getInstance().listBackups(ROOT, "-i", "");
+        }
+        if (enteredFlag.containsKey("f")) {
+            ListUtils.getInstance().listBackups(ROOT, "-f", "");
+        }
+//            if (enteredFlag.containsKey("i")) {
+//                ListUtils.getInstance().listBackups(ROOT, "-i", args.get(1).getValue());
+//            }
+//        System.out.println("execute!!!!");
+    }
+
+    private void listSites(Context context) throws IOException {
+        Map<String, String> enteredFlag = context.getFlagValues();
+        if (enteredFlag.isEmpty() || (enteredFlag.containsKey("e") && enteredFlag.get("e").equals("true"))) {
+            ListUtils.getInstance().listSites(ROOT, "", "", "-e");
+        }
+        if (enteredFlag.containsKey("d") && enteredFlag.get("d").equals("true")) {
+            ListUtils.getInstance().listSites(ROOT, "", "", "-d");
+        }
+
+    }
+
+    private void restoreFiles(Context context) {
+        System.out.println("execute!!!!");
+    }
+
+    private void enable(Context context) {
+    }
+
+    private void disable(Context context) {
+    }
+
+    private void setPeriod(Context context) {
+    }
+
+    private void setSwitch(Context context) {
+    }
+
+    private void auto(Context context) {
+    }
 
     /**
      * This method is used to run proper command from the list. <br>
      * i.e. provide backup, restore, etc. <br>
      * default should represent a warning/error based on the input
+     *
      * @param command The type of CLI command
-     * @param line user input
+     * @param line    user input
      */
     public void getOption(String command, String line) {
         try {

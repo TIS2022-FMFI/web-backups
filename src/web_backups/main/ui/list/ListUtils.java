@@ -30,6 +30,7 @@ public class ListUtils {
     private static final String FULL = "\\full";
     private static final String BACKUPS = "\\backups";
     private static final String SITES_ENABLED = "\\sites_enabled.txt";
+    private static final String SITES_DISABLED = "\\sites_disabled.txt";
     private static final String ROOT_FOLDER_NAME = "web_backups";
     private static final String EXIT_MSG = "*** ALL FILES HAVE BEEN LISTED ***";
 
@@ -45,18 +46,27 @@ public class ListUtils {
      * @see #listBackupFromRootDir(String, String)
      */
     public void listBackups(String root, String flag, String siteName) throws IOException {
+        // TODO CHECK SPECS
+        // flag -e -> List enabled sites
+        // flag -d -> List disabled sites
+
         if (!new File(root).exists()) {
             throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
         }
-        if (flag.equals("-b")) { // lists all sites and both incremental and full backups
+
+        if (!flag.isEmpty() && (siteName == null || siteName.isEmpty())) {
+            if (!flag.equals("-i") && !flag.equals("-f") && !flag.equals("-b")) {
+                throw new NoValidDataException(INVALID_FLAG.getErrorMsg());
+            }
             List<Path> directories = Files.walk(Paths.get(root + BACKUPS), 1)
                     .filter(p -> Files.isDirectory(p) && !p.equals(Paths.get(root + BACKUPS)))
                     .collect(Collectors.toList());
 
+
             for (Path path : directories) {
                 System.out.println(TextColors.ERROR.getColor() + "PERFORMING PRINTING OF SITE: "
                         + new File(path.toString()).getName() + TextColors.RESET.getColor());
-                listBackupFromRootDir(path.toString(), "");
+                listBackupFromRootDir(path.toString(), flag.equals("-b") ? "" : flag);
             }
         } else { // requires the absolute path of the site.
             if (siteName == null || siteName.isEmpty()) {
@@ -140,7 +150,7 @@ public class ListUtils {
      * @param remoteServerAddress Address that the site is connected to, retrieved from config.
      * @see #listSite(String, String, String, String)
      */
-    public void listSites(String root, String localServerName, String remoteServerAddress) throws IOException {
+    public void listSites(String root, String localServerName, String remoteServerAddress, String flag) throws IOException {
 
         File rootFile = new File(root);
         if (!rootFile.exists()) {
@@ -149,7 +159,7 @@ public class ListUtils {
 
         List<String> sites;
         try {
-            sites = Files.readAllLines(Paths.get(rootFile.getPath() + SITES_ENABLED), StandardCharsets.UTF_8);
+            sites = Files.readAllLines(Paths.get(rootFile.getPath() + getFlag(flag)), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
         }
@@ -158,6 +168,20 @@ public class ListUtils {
             listSite(root, localServerName, remoteServerAddress, site);
         }
 
+    }
+
+    private String getFlag(String flag) {
+        switch (flag) {
+            case "-e":
+                return SITES_ENABLED;
+            case "-d":
+                return SITES_DISABLED;
+            default:
+                if (!flag.isEmpty()) {
+                    throw new NoValidDataException(INVALID_FLAG.getErrorMsg());
+                }
+                return "";
+        }
     }
 
     /**
