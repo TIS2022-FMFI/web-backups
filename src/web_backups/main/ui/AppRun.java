@@ -243,10 +243,7 @@ public class AppRun {
         if (enteredFlag.containsKey("f")) {
             ListUtils.getInstance().listBackups(ROOT, "-f", "");
         }
-//            if (enteredFlag.containsKey("i")) {
-//                ListUtils.getInstance().listBackups(ROOT, "-i", args.get(1).getValue());
-//            }
-//        System.out.println("execute!!!!");
+        
     }
 
     private void listSites(Context context) throws IOException {
