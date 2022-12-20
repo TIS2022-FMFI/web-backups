@@ -1,6 +1,7 @@
 package web_backups.main.ui;
 
 import web_backups.lib.global.CliParser.*;
+import web_backups.lib.global.TOMLParser.TomlParser;
 import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.main.ui.list.ListUtils;
 import web_backups.main.ui.mailSender.MailSender;
@@ -315,6 +316,16 @@ public class AppRun {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
         //showMenu(HELP);
         Parser parser = initializeParser();
+
+        TomlParser tomlParser;
+        try {
+            tomlParser = new TomlParser("testConfig.toml");
+        } catch (Exception e) {
+            System.out.println(ERROR.getColor() + e + RESET.getColor());
+        }
+
+        //Example of using ConfigObject:  tomlParser.getConfigObject().getBackup().getIncrementalBackupTime();
+
         while (isRunning) {
             String newLine = br.readLine();
             if (newLine == null) {
