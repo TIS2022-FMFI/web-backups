@@ -207,6 +207,20 @@ public class AppRun {
 
 
     private void backup(Context context) {
+//        String jdbcUrl = "capek.ii.fmph.uniba.sk";
+//        String userName = "webbackup";
+//        String pwd = "Ondrej123";
+//
+//        Connection connection = new Connection(userName, jdbcUrl, 22, pwd);
+//        connection.connect();
+//        TomlParser tomlParser = null;
+//        try {
+//            tomlParser = new TomlParser("testConfig.toml");
+//        } catch (Exception e) {
+//            System.out.println(ERROR.getColor() + e + RESET.getColor());
+//        }
+//        Backup.getInstance().performManualBackup(tomlParser.getConfigObject(), connection.getSession(), "/home/", "-i");
+//
         StringBuffer buffer = new StringBuffer();
         Formatter formatter = new Formatter(buffer, Locale.US);
         String substr = "";
