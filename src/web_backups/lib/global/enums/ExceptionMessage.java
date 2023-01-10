@@ -4,6 +4,7 @@ package web_backups.lib.global.enums;
  *
  * */
 public enum ExceptionMessage {
+	INVALID_SESSION("Not a Valid session"),
     INVALID_COMMAND("Not a Valid command"),
     INVALID_CONFIG_FILE("The configuration file is not properly set."),
     INVALID_FLAG("No Valid Flag provided"),
