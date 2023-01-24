@@ -24,7 +24,7 @@ public class ConfigFileUtils {
 
     }
 
-    public void setSwitch(ConfigObject config, String rootAddr, String period) {
+    public void setSwitch(ConfigObject config, String rootAddr, int switchNumber) {
 
     }
 
