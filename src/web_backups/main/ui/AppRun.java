@@ -1,6 +1,9 @@
 package web_backups.main.ui;
 
+import com.jcraft.jsch.JSchException;
+import web_backups.lib.global.Backup.Backup;
 import web_backups.lib.global.CliParser.*;
+import web_backups.lib.global.TOMLParser.ConfigObject;
 import web_backups.lib.global.TOMLParser.TomlParser;
 import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.main.ui.list.ListUtils;
@@ -22,6 +25,8 @@ public class AppRun {
     private static final String HELP = "wb help";
     private static final String EXIT = "wb exit";
     private static final String ROOT = "C:\\Users\\Delta\\Desktop\\Programming\\AIN_Data\\TESTING"; // WILL BE REMOVED!
+    private TomlParser tomlParser;
+    private ConfigObject config;
 
     /**
      * This method is used in app start or via user request by typing <b>wb help</b> and help options.
@@ -86,7 +91,14 @@ public class AppRun {
                 .setUsage("Manually runs the backup of a specific site")
                 .addArg(1, args.get("[site_name]"))
                 .addFlag(flags.get("-i"))
-                .setExecutor(this::backup)
+                        .setExecutor(ctx -> {
+                            try {
+                                backup(ctx);
+                            } catch (JSchException e) {
+                                e.printStackTrace();
+                            }
+                        }
+    )
                 .build());
         commandList.add(Command.builder()
                 .setName("restore")
@@ -206,31 +218,23 @@ public class AppRun {
     }
 
 
-    private void backup(Context context) {
-//        String jdbcUrl = "capek.ii.fmph.uniba.sk";
-//        String userName = "webbackup";
-//        String pwd = "Ondrej123";
-//
-//        Connection connection = new Connection(userName, jdbcUrl, 22, pwd);
-//        connection.connect();
-//        TomlParser tomlParser = null;
-//        try {
-//            tomlParser = new TomlParser("testConfig.toml");
-//        } catch (Exception e) {
-//            System.out.println(ERROR.getColor() + e + RESET.getColor());
-//        }
-//        Backup.getInstance().performManualBackup(tomlParser.getConfigObject(), connection.getSession(), "/home/", "-i");
-//
-        StringBuffer buffer = new StringBuffer();
-        Formatter formatter = new Formatter(buffer, Locale.US);
-        String substr = "";
-        Map<String, String> flags = context.getFlagValues();
-        if (flags.get("i") != null) {
-            substr = " incremental";
-        }
-        formatter.format("Make%s backup with site_name %s ", substr, context.getArg(1).getValue());
+    private void backup(Context context) throws JSchException {
+        Map<String, String> enteredFlag = context.getFlagValues();
+        String type = "";
 
-        System.out.println("" + formatter);
+        if (enteredFlag.isEmpty() || enteredFlag.containsKey("f")) {
+            type = "-f"; // FULL is set as default
+        } else if (enteredFlag.containsKey("i")) {
+            type = "-i";
+        } else {
+            // logger.log
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
+
+        Backup.getInstance().backupFiles(config, config.getStorage().getRemoteStorageLocation(), type);
+
+        // TODO: Perform backup cleanup when automatic backup gets finished
+        System.out.println(" Backup Done. ");
     }
 
     private void restore(Context context) {
@@ -244,6 +248,9 @@ public class AppRun {
         System.out.println("" + formatter);
     }
 
+    /**
+     * Method that lists backups on the local server where the cron job/or the app is run
+     * */
     private void listBackups(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
 //        Map<Integer, CommandArgument> args = context.getArgs();
@@ -261,6 +268,9 @@ public class AppRun {
         
     }
 
+    /**
+     * Method that lists sites on the local server where the cron job/or the app is run
+     * */
     private void listSites(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
         if (enteredFlag.isEmpty() || (enteredFlag.containsKey("e") && enteredFlag.get("e").equals("true"))) {
@@ -273,6 +283,7 @@ public class AppRun {
     }
 
     private void restoreFiles(Context context) {
+
         System.out.println("execute!!!!");
     }
 
@@ -331,7 +342,6 @@ public class AppRun {
         //showMenu(HELP);
         Parser parser = initializeParser();
 
-        TomlParser tomlParser;
         try {
             tomlParser = new TomlParser("testConfig.toml");
         } catch (Exception e) {
@@ -365,6 +375,20 @@ public class AppRun {
     private void sendMail(String from, String to, String host, String subject, String msg) {
         MailSender ms = new MailSender(from, to, host, subject, msg);
         ms.sendMail();
+    }
+
+    private ConfigObject getConfig() {
+        if (config == null) {
+            config = getTomlParser().getConfigObject();
+        }
+        return config;
+    }
+
+    private TomlParser getTomlParser() {
+        if (tomlParser == null) {
+            tomlParser  = new TomlParser("testConfig.toml");
+        }
+        return tomlParser;
     }
 
 }

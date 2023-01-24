@@ -13,4 +13,16 @@ public final class StorageConfigPart {
         this.localStorageLocation = localStorageLocation;
         this.remoteStorageLocation = remoteStorageLocation;
     }
+
+    public String getRemoteStorageAddress() {
+        return remoteStorageAddress;
+    }
+
+    public String getLocalStorageLocation() {
+        return localStorageLocation;
+    }
+
+    public String getRemoteStorageLocation() {
+        return remoteStorageLocation;
+    }
 }
