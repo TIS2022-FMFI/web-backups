@@ -9,30 +9,22 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
+import static web_backups.lib.global.Constants.GlobalConstants.*;
 import static web_backups.lib.global.enums.ExceptionMessage.INVALID_CONFIG_FILE;
 
 public class Backup {
 
     private static final Backup INSTANCE = new Backup();
-    private static final String INCREMENTAL_TYPE_NAME = "incrBackup";
-    private static final String FULL_TYPE_NAME = "full";
-    private static final String FOLDER_INCREMENTAL = "incremental";
-    private static final String FOLDER_FULL = "full";
-    private static final String PATH_DELIMITER = "\\";
-
+//    private static final Logger LOGGER = LoggerFactory.getLogger(Backup.class);;
     private static final String ZIP_INSTALLED_PATH = "/usr/bin/7z"; // the path of installed 7z, by default it is here.
 
     public static Backup getInstance() {
         return INSTANCE;
     }
 
+    public void backupFiles(ConfigObject config, String type) throws JSchException {
 
-    /**
-     * @param rootDir Location of the root folder on remote server the data are kept on
-     */
-    public void backupFiles(ConfigObject config, String rootDir, String type) throws JSchException {
-
-        String backupType = "-i".equals(type) ? INCREMENTAL_TYPE_NAME : FULL_TYPE_NAME;
+        String backupType = "-i".equals(type) ? INCREMENTAL_TYPE_NAME.getText() : FULL_TYPE_NAME.getText();
         String archiveName = getArchiveNameByType(backupType, config);
 
         // TODO: ADD LOGGER
@@ -47,34 +39,39 @@ public class Backup {
         }
 
         /* Archive transfer */
-        transferArchiveToRemoteServer(config, archiveName, "-f".equals(type) ? FOLDER_FULL : FOLDER_INCREMENTAL);
+        transferArchiveToRemoteServer(config, archiveName, "-f".equals(type) ? FOLDER_FULL.getText() :
+                FOLDER_INCREMENTAL.getText());
 
         /* remove the archive with given name afterwards when the backup is done */
-        deleteArchive(archiveName);
+        if (config.getBackup().getKeepOnLocalServer() != null && !config.getBackup().getKeepOnLocalServer()) {
+            deleteArchive(archiveName);
+        }
     }
 
     private void transferArchiveToRemoteServer(ConfigObject config, String archiveName, String folderType) throws JSchException {
 
         // TODO: add logger and separate those lines into new method
 
+        /* This part is gonna be retrieved from the config file! */
         String userName = "";
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
         int port = 22;
         String pwd = "";
 
         // TODO: add UserName to the config
-        //
+
         Connection connection = new Connection(userName, remoteServAddr, port, pwd);
         connection.connect();
-
-        Channel channel = connection.getSession().openChannel("sftp");
-        channel.connect();
-        ChannelSftp sftpChannel = (ChannelSftp) channel;
+        ChannelSftp sftpChannel = connection.getSftpChannel();
 
         // TODO: traverse the FS to find the file
 
-        String destinationFolder = config.getStorage().getRemoteStorageLocation() + PATH_DELIMITER + "backups"
-                + config.getMain().getSiteId() + (FOLDER_FULL.equals(folderType) ? FOLDER_FULL : FOLDER_INCREMENTAL);
+        /* It is expected that the remote storage location does contain the path delimiter in the end! */
+        String destinationFolder = config.getStorage().getRemoteStorageLocation()
+                + config.getMain().getSiteId()
+                + PATH_DELIMITER.getText()
+                + MAIN_BACKUPS_FOLDER.getText()
+                + (FOLDER_FULL.getText().equals(folderType) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText());
 
         // TODO ADD LOGGER HERE
         try {
@@ -82,6 +79,7 @@ public class Backup {
         } catch (SftpException e) {
             e.printStackTrace();
         }
+        connection.disconnect();
     }
 
     private void deleteArchive(String archiveName) {
@@ -96,44 +94,6 @@ public class Backup {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-    }
-
-    /**
-     * This method proceeds the backup (both incremental and full (if needed)) of a site that is specified in the <br>
-     * config file. Method is supposed to be used and run automatically by cron. <br>
-     * Connection to the server before is needed!
-     *
-     * @param config  The configuration file of given site
-     * @param session The session that is created by server connection. It is needed for sftp connection
-     * @param rootDir The root directory of Local Server where the data are stored
-     */
-    @Deprecated
-    public void performBackupFromConfig(ConfigObject config, Session session, String rootDir) throws JSchException, SftpException, IOException, InterruptedException {
-        Channel channel = session.openChannel("sftp");
-        channel.connect();
-        ChannelSftp sftpChannel = (ChannelSftp) channel;
-
-        /* An incremental backup is being made since this method is run automatically from CRON. */
-        String archiveName = getArchiveNameByType(INCREMENTAL_TYPE_NAME, config);
-
-        createArchive(archiveName, config);
-
-        // transfers the archive to the local server
-        transferArchiveToLocalServer(archiveName, sftpChannel, rootDir, FOLDER_INCREMENTAL);
-
-        /* full backup */
-        // rename archive
-        String fullBackupArchive = archiveName.replace(INCREMENTAL_TYPE_NAME, FULL_TYPE_NAME);
-        Process process = Runtime.getRuntime().exec(
-                archiveName + " mv " + fullBackupArchive);
-        process.waitFor();
-
-        // TODO: clean backups folder based on periods.
-        // cleanFullBackupsFolder();
-        transferArchiveToLocalServer(fullBackupArchive, sftpChannel, rootDir, FOLDER_FULL);
-
-        sftpChannel.exit();
-        session.disconnect();
     }
 
     /**
@@ -170,23 +130,6 @@ public class Backup {
     }
 
     /**
-     * This method transfers the created backup file from the remote server to the local server
-     *
-     * @param archiveName The name of the archive that is created
-     * @param rootDir     The root directory of Local Server where the data are stored
-     * @param sftpChannel The sftp connection
-     * @param type        The type of folder to store the backup in.
-     */
-    @Deprecated
-    private void transferArchiveToLocalServer(String archiveName, ChannelSftp sftpChannel,
-                                              String rootDir, String type) throws SftpException {
-        // local directory to be stored. i.e. /home/.../backups/siteName/type
-        String localServerStorage = rootDir + type;
-        // transfer
-        sftpChannel.put(localServerStorage, archiveName);
-    }
-
-    /**
      * This method creates the archive name based on the specification.
      *
      * @param type   Defines the substring type in the final zip name that is stored on remote server
@@ -200,33 +143,6 @@ public class Backup {
 
         /* SiteName-Type-Date.7z */
         return config.getMain().getSiteId() + "-" + type + year + "-" + month + "-" + day + ".7z";
-    }
-
-    /**
-     * This method is used when performing manual backups. Since there are two approaches of backing up <br>
-     * data - One manual and one automatic via Cron, the manual does not make both backup types automatically.
-     * Connection to the server before is needed!
-     *
-     * @param config  The configuration file of given site
-     * @param session The session that is created by server connection. It is needed for sftp connection
-     * @param rootDir The root directory of Local Server where the data are stored
-     * @param type    The type(flag) of backup
-     */
-    public void performManualBackup(ConfigObject config, Session session, String rootDir, String type) throws JSchException, IOException, InterruptedException, SftpException {
-        Channel channel = session.openChannel("sftp");
-        channel.connect();
-        ChannelSftp sftpChannel = (ChannelSftp) channel;
-
-        /* An incremental backup is being made since this method is run automatically from CRON. */
-        String archiveName = getArchiveNameByType("-i".equals(type) ? INCREMENTAL_TYPE_NAME : FULL_TYPE_NAME, config);
-
-        createArchive(archiveName, config);
-
-        // transfers the archive to the local server
-        transferArchiveToLocalServer(archiveName, sftpChannel, rootDir, "-i".equals(type) ? FOLDER_INCREMENTAL : FOLDER_FULL);
-
-        sftpChannel.exit();
-        session.disconnect();
     }
 
 }

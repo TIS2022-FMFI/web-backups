@@ -8,6 +8,7 @@ public class Connection {
     private int port;
     private String password;
     private Session session;
+    private Channel channel;
 
     public Connection(String userName, String host, int port, String password) {
         this.userName = userName;
@@ -16,6 +17,9 @@ public class Connection {
         this.password = password;
     }
 
+    /**
+     *  ancestor before call getSftpChannel
+     * */
     public void connect() {
         try {
             JSch jsch = new JSch();
@@ -35,5 +39,24 @@ public class Connection {
 
     public Session getSession() {
         return session;
+    }
+
+    public void disconnect() {
+        if (channel.isConnected()) {
+            channel.disconnect();
+        }
+        if (session.isConnected()) {
+            session.disconnect();
+        }
+    }
+
+    /**
+     *
+     * */
+    public ChannelSftp getSftpChannel() throws JSchException {
+        channel = this.getSession().openChannel("sftp");
+        channel.connect();
+        ChannelSftp sftpChannel = (ChannelSftp) channel;
+        return sftpChannel;
     }
 }

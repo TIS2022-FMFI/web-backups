@@ -2,7 +2,6 @@ package web_backups.main;
 
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
-import web_backups.lib.global.Backup.Backup;
 import web_backups.lib.global.TOMLParser.TomlParser;
 import web_backups.lib.global.sftpConnection.Connection;
 
@@ -29,7 +28,7 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        Backup.getInstance().performManualBackup(tomlParser.getConfigObject(), connection.getSession(), "/home/", "-i");
+//        Backup.getInstance().performManualBackup(tomlParser.getConfigObject(), connection.getSession(), "/home/", "-i");
 
     }
 }

@@ -1,7 +1,9 @@
 package web_backups.main.ui;
 
 import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpException;
 import web_backups.lib.global.Backup.Backup;
+import web_backups.lib.global.Backup.Restore;
 import web_backups.lib.global.CliParser.*;
 import web_backups.lib.global.TOMLParser.ConfigObject;
 import web_backups.lib.global.TOMLParser.TomlParser;
@@ -91,21 +93,30 @@ public class AppRun {
                 .setUsage("Manually runs the backup of a specific site")
                 .addArg(1, args.get("[site_name]"))
                 .addFlag(flags.get("-i"))
-                        .setExecutor(ctx -> {
+                .setExecutor(ctx -> {
                             try {
                                 backup(ctx);
                             } catch (JSchException e) {
                                 e.printStackTrace();
                             }
                         }
-    )
+                )
                 .build());
         commandList.add(Command.builder()
                 .setName("restore")
                 .setUsage("Restores a specific site by writing its name and specifying the backup_id")
                 .addArg(1, args.get("[site_name]"))
                 .addArg(2, args.get("[backup_id]"))
-                .setExecutor(this::restore)
+                .setExecutor(ctx -> {
+                            try {
+                                restore(ctx);
+                            } catch (JSchException e) {
+                                e.printStackTrace();
+                            } catch (SftpException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                )
                 .build());
         commandList.add(Command.builder()
                 .setName("restore-files")
@@ -141,7 +152,14 @@ public class AppRun {
         commandList.add(Command.builder()
                 .setName("auto")
                 .setUsage("Checks all configs of locally enabled sites and performs backups if needed automatically as requested in site config files")
-                .setExecutor(this::auto)
+                .setExecutor(ctx -> {
+                            try {
+                                auto(ctx);
+                            } catch (JSchException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                )
                 .build());
 
         return commandList;
@@ -231,29 +249,25 @@ public class AppRun {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
 
-        Backup.getInstance().backupFiles(config, config.getStorage().getRemoteStorageLocation(), type);
+        Backup.getInstance().backupFiles(config, type);
 
         // TODO: Perform backup cleanup when automatic backup gets finished
         System.out.println(" Backup Done. ");
     }
 
-    private void restore(Context context) {
-        StringBuffer buffer = new StringBuffer();
-        Formatter formatter = new Formatter(buffer, Locale.US);
-        if (context.getArg(2) == null) {
-            formatter.format("Make restore with site_name %s", context.getArg(1).getValue());
-        } else {
-            formatter.format("Make restore with site_name %s and backup_id %s", context.getArg(1).getValue(), context.getArg(2).getValue());
+    private void restore(Context context) throws JSchException, SftpException {
+        if (context.getArgs().size() < 2 || context.getArg(2) == null) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
-        System.out.println("" + formatter);
+        // config, backupId, File.txt containing files to be restored.
+        Restore.getInstance().restore(config, context.getArg(1).getValue(), context.getArg(2).getValue());
     }
 
     /**
      * Method that lists backups on the local server where the cron job/or the app is run
-     * */
+     */
     private void listBackups(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
-//        Map<Integer, CommandArgument> args = context.getArgs();
 
         // TODO: add validation for a single site
         if (enteredFlag.isEmpty()) {
@@ -265,12 +279,11 @@ public class AppRun {
         if (enteredFlag.containsKey("f")) {
             ListUtils.getInstance().listBackups(ROOT, "-f", "");
         }
-        
     }
 
     /**
      * Method that lists sites on the local server where the cron job/or the app is run
-     * */
+     */
     private void listSites(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
         if (enteredFlag.isEmpty() || (enteredFlag.containsKey("e") && enteredFlag.get("e").equals("true"))) {
@@ -283,23 +296,34 @@ public class AppRun {
     }
 
     private void restoreFiles(Context context) {
-
+        if (context.getArgs().size() < 2 || context.getArg(2) == null) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
         System.out.println("execute!!!!");
     }
 
     private void enable(Context context) {
+
     }
 
     private void disable(Context context) {
+
     }
 
     private void setPeriod(Context context) {
+
     }
 
     private void setSwitch(Context context) {
+
     }
 
-    private void auto(Context context) {
+    private void auto(Context context) throws JSchException {
+        Backup.getInstance().backupFiles(config, "-i");
+
+        // TODO check whether full is needed
+//        Backup.getInstance().backupFiles(config, "-f");
+
     }
 
     /**
@@ -386,7 +410,7 @@ public class AppRun {
 
     private TomlParser getTomlParser() {
         if (tomlParser == null) {
-            tomlParser  = new TomlParser("testConfig.toml");
+            tomlParser = new TomlParser("testConfig.toml");
         }
         return tomlParser;
     }
