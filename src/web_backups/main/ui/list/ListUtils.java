@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static web_backups.lib.global.Constants.GlobalConstants.*;
 import static web_backups.lib.global.enums.ExceptionMessage.*;
 
 /**
@@ -25,13 +26,10 @@ import static web_backups.lib.global.enums.ExceptionMessage.*;
  */
 public class ListUtils {
 
-    private static final String PATH_DELIMITER = "\\";
-    private static final String INCREMENTAL = "\\incremental";
     private static final String FULL = "\\full";
     private static final String BACKUPS = "\\backups";
     private static final String SITES_ENABLED = "\\sites_enabled.txt";
     private static final String SITES_DISABLED = "\\sites_disabled.txt";
-    private static final String ROOT_FOLDER_NAME = "web_backups";
     private static final String EXIT_MSG = "*** ALL FILES HAVE BEEN LISTED ***";
 
     private static final ListUtils INSTANCE = new ListUtils();
@@ -72,7 +70,7 @@ public class ListUtils {
             if (siteName == null || siteName.isEmpty()) {
                 throw new NoValidDataException(SITES_FOLDER_NOT_FOUND.getErrorMsg());
             }
-            listBackupFromRootDir(root + BACKUPS + PATH_DELIMITER + siteName, flag);
+            listBackupFromRootDir(root + BACKUPS + PATH_DELIMITER.getText() + siteName, flag);
         }
     }
 
@@ -86,10 +84,10 @@ public class ListUtils {
         Queue<File> directories = new LinkedList<>();
         String myDir = dir;
         if (flag.equals("-i")) {
-            myDir += INCREMENTAL;
+            myDir += PATH_DELIMITER + FOLDER_INCREMENTAL.getText();
         }
         if (flag.equals("-f")) {
-            myDir += FULL;
+            myDir += PATH_DELIMITER + FOLDER_FULL.getText();
         }
 
         File root = new File(myDir);
@@ -210,7 +208,8 @@ public class ListUtils {
      * Method that gets the last modified time of incremental backup (they appear every time)
      */
     private String getLastBackupTimeBySiteName(String siteName, File root) throws IOException {
-        File[] files = new File(root.getPath() + BACKUPS + PATH_DELIMITER + siteName + INCREMENTAL + PATH_DELIMITER).listFiles();
+        File[] files = new File(root.getPath() + BACKUPS + PATH_DELIMITER.getText() + siteName +
+                FOLDER_INCREMENTAL.getText() + PATH_DELIMITER.getText()).listFiles();
 
         if (files == null) {
             throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
