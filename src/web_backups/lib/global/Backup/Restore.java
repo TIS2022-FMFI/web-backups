@@ -4,11 +4,16 @@ import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
 import web_backups.lib.global.TOMLParser.ConfigObject;
+import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.lib.global.sftpConnection.Connection;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 
 import static web_backups.lib.global.Constants.GlobalConstants.*;
+import static web_backups.lib.global.enums.ExceptionMessage.FILE_NOT_FOUND;
 
 public class Restore {
 
@@ -39,10 +44,31 @@ public class Restore {
         }
     }
 
-    public void restoreFiles(ConfigObject config, String siteName, String backupId, String filePath) throws JSchException, SftpException {
+    public void restoreFiles(ConfigObject config, String siteName, String backupId, String filePath) throws JSchException, SftpException, IOException, InterruptedException {
         retrieveZipFileFromRemoteServer(config, siteName, backupId);
+        String outputPath = config.getStorage().getLocalStorageLocation();
+        String inputZip = backupId;
 
         /* Clarify whether the restore is being made from a remote server or not! If yes, adapt the config file with localAddress! */
+        File file = new File(filePath);
+        if (!file.exists()) {
+            throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
+        }
+        FileReader fr = new FileReader(file);
+        BufferedReader br = new BufferedReader(fr);
+        StringBuffer sb = new StringBuffer();
+
+        String line;
+        while ((line = br.readLine()) != null) {
+            sb.append(line);
+        }
+
+        br.close();
+        fr.close();
+
+        Process process = Runtime.getRuntime().exec("7z x -o" + outputPath + " " + inputZip + sb.toString());
+        process.waitFor();
+
     }
 
     private String getZipFilePath(ConfigObject config, String storage, String siteName, String backupId, String folder) {
