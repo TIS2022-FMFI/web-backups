@@ -53,10 +53,10 @@ public class Backup {
         // TODO: add logger and separate those lines into new method
 
         /* This part is gonna be retrieved from the config file! */
-        String userName = "";
+        String userName = "webbackup";
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
         int port = 22;
-        String pwd = "";
+        String pwd = "Ondrej123";
 
         // TODO: add UserName to the config
 
@@ -107,7 +107,7 @@ public class Backup {
     private void createArchive(String archiveName, ConfigObject config) throws IOException, InterruptedException, NoValidDataException {
         // processes the backup
         String executable = ZIP_INSTALLED_PATH + " a -t7z " + archiveName + " "
-                + String.join(" ", config.getBackup().getIncludedPaths());
+                + String.join(" ", config.getBackup().getIncludedPaths()); // TODO: ADD -o path
 
         // in default the main directory of the site with the * wildcard has to be set! Mandatory field!
         if (config.getBackup().getIncludedPaths().isEmpty()) {

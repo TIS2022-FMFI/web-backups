@@ -1,27 +1,23 @@
 # Example of config file
 
 [main]
-site_id = "siteName"
+site_id = "test"
 admin_email_address = "example@email.com"
 
 local_server_id = "localServer"
 
 [backup]
-full_backup_periods = [ "180", "90", "7" ]
+full_backup_periods = ["180", "90", "7"]
 incremental_backup_period = "1"
-incremental_backup_time = [ "04:20" ]
+incremental_backup_time = ["04:20"]
 keep_on_local_server = true
 pre_backup_script = "/home/siteScripts/preBackup.script"
 post_backup_script = ""
 included_paths = [
-  "/home/siteId/*.html",
-  "/home/siteId/script[1-9].js",
-  "/home/siteId/img?.png"
+    "/home/yarvelian/Desktop/backupThis/file*.txt"
 ]
 excluded_paths = [
-  "/home/siteId/*.html",
-  "/home/siteId/script[1-9].js",
-  "/home/siteId/img?.png"
+
 ]
 
 [restore]

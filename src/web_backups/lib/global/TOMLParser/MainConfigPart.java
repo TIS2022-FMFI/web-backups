@@ -1,4 +1,5 @@
 package web_backups.lib.global.TOMLParser;
+
 import org.jetbrains.annotations.NotNull;
 
 public final class MainConfigPart {
