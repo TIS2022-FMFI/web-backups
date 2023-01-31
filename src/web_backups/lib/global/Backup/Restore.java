@@ -3,6 +3,8 @@ package web_backups.lib.global.Backup;
 import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import web_backups.lib.global.TOMLParser.ConfigObject;
 import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.lib.global.sftpConnection.Connection;
@@ -16,6 +18,8 @@ import static web_backups.lib.global.Constants.GlobalConstants.*;
 import static web_backups.lib.global.enums.ExceptionMessage.FILE_NOT_FOUND;
 
 public class Restore {
+
+    private final Logger logger = LoggerFactory.getLogger(Backup.class);
 
     private static final Restore INSTANCE = new Restore();
 
@@ -31,6 +35,7 @@ public class Restore {
      */
     public void restore(ConfigObject config, String siteName, String backupId) throws JSchException, SftpException {
         // the zip file with given backup Id is stored on the localserver site location
+        logger.info("STARTING SITE RESTORE");
         retrieveZipFileFromRemoteServer(config, siteName, backupId);
 
         // restore process on local machine
@@ -45,6 +50,7 @@ public class Restore {
     }
 
     public void restoreFiles(ConfigObject config, String siteName, String backupId, String filePath) throws JSchException, SftpException, IOException, InterruptedException {
+        logger.info("Restoring files for site name: " + siteName);
         retrieveZipFileFromRemoteServer(config, siteName, backupId);
         String outputPath = config.getStorage().getLocalStorageLocation();
         String inputZip = backupId;
@@ -52,6 +58,7 @@ public class Restore {
         /* Clarify whether the restore is being made from a remote server or not! If yes, adapt the config file with localAddress! */
         File file = new File(filePath);
         if (!file.exists()) {
+            logger.error(FILE_NOT_FOUND.getErrorMsg());
             throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
         }
         FileReader fr = new FileReader(file);
@@ -66,9 +73,10 @@ public class Restore {
         br.close();
         fr.close();
 
-        Process process = Runtime.getRuntime().exec("7z x -o" + outputPath + " " + inputZip + sb.toString());
+        logger.info("Retrieving files from directory.");
+        Process process = Runtime.getRuntime().exec("7z x -o" + outputPath + " " + inputZip + sb);
         process.waitFor();
-
+        logger.info("Restore finished.");
     }
 
     private String getZipFilePath(ConfigObject config, String storage, String siteName, String backupId, String folder) {
@@ -100,7 +108,9 @@ public class Restore {
         String folder = backupId.contains("full") ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText();
         String zipFilePath = getZipFilePath(config, config.getStorage().getRemoteStorageLocation(), siteName, backupId, folder);
 
+        logger.info("Retrieving file: " + zipFilePath);
         sftpChannel.get(zipFilePath, config.getStorage().getLocalStorageLocation());
+
         // logger.log
         connection.disconnect();
     }

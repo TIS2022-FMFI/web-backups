@@ -1,6 +1,6 @@
 package web_backups.lib.global.TOMLParser;
 
-import com.electronwill.nightconfig.core.file.*;
+import com.electronwill.nightconfig.core.file.FileConfig;
 
 import java.util.List;
 

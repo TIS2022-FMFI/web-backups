@@ -1,8 +1,8 @@
 package web_backups.main;
 
+import com.jcraft.jsch.ChannelSftp;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
-import web_backups.lib.global.Backup.Backup;
 import web_backups.lib.global.TOMLParser.TomlParser;
 import web_backups.lib.global.sftpConnection.Connection;
 
@@ -25,12 +25,14 @@ public class Main {
         connection.connect();
         TomlParser tomlParser = null;
         try {
-            tomlParser = new TomlParser("/home/yarvelian/Desktop/web-backup/web-backups/src/web_backups/testConfig.toml");
+            tomlParser = new TomlParser("testConfig.toml");
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        Backup.getInstance().backupFiles(tomlParser.getConfigObject(), "-i");
+        ChannelSftp c = connection.getSftpChannel();
+
+        System.out.println("AWSGNJ");
 //        Backup.getInstance().performManualBackup(tomlParser.getConfigObject(), connection.getSession(), "/home/", "-i");
 
     }
