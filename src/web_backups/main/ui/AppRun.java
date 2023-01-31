@@ -2,6 +2,8 @@ package web_backups.main.ui;
 
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import web_backups.lib.global.Backup.Backup;
 import web_backups.lib.global.Backup.Restore;
 import web_backups.lib.global.CliParser.*;
@@ -23,6 +25,9 @@ import static web_backups.lib.global.enums.ExceptionMessage.INVALID_OPTION;
 import static web_backups.lib.global.enums.TextColors.*;
 
 public class AppRun {
+
+    private final Logger logger = LoggerFactory.getLogger(AppRun.class);
+
     private boolean isRunning = false;
     private static final String HELP = "wb help";
     private static final String EXIT = "wb exit";
@@ -265,11 +270,11 @@ public class AppRun {
 
     /**
      * Method that lists backups on the local server where the cron job/or the app is run
+     * Usage: wb list-backups -b, wb list-backups -i
      */
     private void listBackups(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
 
-        // TODO: add validation for a single site
         if (enteredFlag.isEmpty()) {
             ListUtils.getInstance().listBackups(ROOT, "-b", "");
         }
@@ -283,6 +288,7 @@ public class AppRun {
 
     /**
      * Method that lists sites on the local server where the cron job/or the app is run
+     * Usage: wb list-sites -e, wb list-sites -d
      */
     private void listSites(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();

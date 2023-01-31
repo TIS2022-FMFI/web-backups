@@ -1,6 +1,10 @@
 package web_backups.lib.global.Backup;
 
-import com.jcraft.jsch.*;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.SftpException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import web_backups.lib.global.TOMLParser.ConfigObject;
 import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.lib.global.sftpConnection.Connection;
@@ -14,8 +18,9 @@ import static web_backups.lib.global.enums.ExceptionMessage.INVALID_CONFIG_FILE;
 
 public class Backup {
 
+    private final Logger logger = LoggerFactory.getLogger(Backup.class);
+
     private static final Backup INSTANCE = new Backup();
-//    private static final Logger LOGGER = LoggerFactory.getLogger(Backup.class);;
     private static final String ZIP_INSTALLED_PATH = "/usr/bin/7z"; // the path of installed 7z, by default it is here.
 
     public static Backup getInstance() {
@@ -23,11 +28,9 @@ public class Backup {
     }
 
     public void backupFiles(ConfigObject config, String type) throws JSchException {
-
         String backupType = "-i".equals(type) ? INCREMENTAL_TYPE_NAME.getText() : FULL_TYPE_NAME.getText();
+        logger.info("BACKING UP FILES WITH TYPE: " + backupType);
         String archiveName = getArchiveNameByType(backupType, config);
-
-        // TODO: ADD LOGGER
 
         /* Archive creation */
         try {
@@ -39,6 +42,7 @@ public class Backup {
         }
 
         /* Archive transfer */
+        logger.info("Transfering archive to remote server");
         transferArchiveToRemoteServer(config, archiveName, "-f".equals(type) ? FOLDER_FULL.getText() :
                 FOLDER_INCREMENTAL.getText());
 
@@ -53,13 +57,12 @@ public class Backup {
         // TODO: add logger and separate those lines into new method
 
         /* This part is gonna be retrieved from the config file! */
-        String userName = "";
+        String userName = "webbackup";
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
         int port = 22;
-        String pwd = "";
+        String pwd = "Ondrej123";
 
-        // TODO: add UserName to the config
-
+        logger.info("Creating connection");
         Connection connection = new Connection(userName, remoteServAddr, port, pwd);
         connection.connect();
         ChannelSftp sftpChannel = connection.getSftpChannel();
@@ -67,32 +70,35 @@ public class Backup {
         // TODO: traverse the FS to find the file
 
         /* It is expected that the remote storage location does contain the path delimiter in the end! */
+        logger.info("Destination folder: ");
         String destinationFolder = config.getStorage().getRemoteStorageLocation()
                 + config.getMain().getSiteId()
                 + PATH_DELIMITER.getText()
                 + MAIN_BACKUPS_FOLDER.getText()
                 + (FOLDER_FULL.getText().equals(folderType) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText());
-
-        // TODO ADD LOGGER HERE
+        logger.info(destinationFolder);
         try {
             sftpChannel.put(destinationFolder, archiveName);
+            logger.info("Transfer successfully done.");
         } catch (SftpException e) {
+            logger.error("Transfer aborted ", e);
             e.printStackTrace();
         }
         connection.disconnect();
     }
 
     private void deleteArchive(String archiveName) {
-        // TODO: add logger
+        logger.info("DELETING ARCHIVE: " + archiveName);
         try {
             Process process = Runtime
                     .getRuntime()
                     .exec("rm - r " + archiveName);
             process.waitFor();
+            logger.info("Successfully deleted.");
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("IO EXCEPTION! ", e);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.error("INTERRUPT EXCEPTION! ", e);
         }
     }
 
@@ -106,11 +112,13 @@ public class Backup {
      */
     private void createArchive(String archiveName, ConfigObject config) throws IOException, InterruptedException, NoValidDataException {
         // processes the backup
+        logger.info("Creating archive: ");
         String executable = ZIP_INSTALLED_PATH + " a -t7z " + archiveName + " "
                 + String.join(" ", config.getBackup().getIncludedPaths());
 
         // in default the main directory of the site with the * wildcard has to be set! Mandatory field!
         if (config.getBackup().getIncludedPaths().isEmpty()) {
+            logger.error(INVALID_CONFIG_FILE.getErrorMsg());
             throw new NoValidDataException(INVALID_CONFIG_FILE.getErrorMsg());
         }
         if (!config.getBackup().getExcludedPaths().isEmpty()) {
@@ -120,10 +128,11 @@ public class Backup {
                     .collect(Collectors.joining(" "));
         }
 
+        logger.info("Starting process");
         Process process = Runtime
                 .getRuntime() // vytvara process na pc, kde bezi ta app
                 .exec(executable); // excluded files
-
+        logger.info("Backup file successfully created");
         process.waitFor();
         // TODO: add log here
 
