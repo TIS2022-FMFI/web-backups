@@ -6,11 +6,16 @@ public final class MainConfigPart {
     private final String siteId;
     private final String adminEmailAddress;
     private final String localServerId;
+    private final String username;
+    private final String password;
 
-    public MainConfigPart(@NotNull String siteId, @NotNull String adminEmailAddress, @NotNull String localServerId) {
+    public MainConfigPart(@NotNull String siteId, @NotNull String adminEmailAddress,
+                          @NotNull String localServerId, @NotNull String username, @NotNull String password) {
         this.siteId = siteId;
         this.adminEmailAddress = adminEmailAddress;
         this.localServerId = localServerId;
+        this.password = password;
+        this.username = username;
     }
 
     public String getSiteId() {
@@ -24,4 +29,8 @@ public final class MainConfigPart {
     public String getLocalServerId() {
         return localServerId;
     }
+
+    public String getUsername() { return username; }
+
+    public String getPassword() {return password; }
 }

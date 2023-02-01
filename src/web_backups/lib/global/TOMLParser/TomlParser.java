@@ -35,8 +35,10 @@ public class TomlParser {
         String siteId = config.get("main.site_id");
         String name = config.get("main.admin_email_address");
         String localServerId = config.get("main.local_server_id");
+        String username = config.get("main.username");
+        String password = config.get("main.password");
 
-        return new MainConfigPart(siteId, name, localServerId);
+        return new MainConfigPart(siteId, name, localServerId, username, password);
     }
 
     private BackupConfigPart readBackupPart(FileConfig config) {
