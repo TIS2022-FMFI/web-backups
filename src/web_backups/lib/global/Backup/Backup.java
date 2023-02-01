@@ -4,6 +4,7 @@ import com.jcraft.jsch.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import web_backups.lib.global.TOMLParser.ConfigObject;
+import web_backups.lib.global.TOMLParser.StorageConfigPart;
 import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.lib.global.sftpConnection.Connection;
 
@@ -31,34 +32,39 @@ public class Backup {
         String archiveName = getArchiveNameByType(backupType, config);
 
         /* Archive creation */
+        String storageLocation = config.getStorage().getLocalStorageLocation()
+                + PATH_DELIMITER.getText()
+                + backupType
+                + PATH_DELIMITER.getText();
         try {
-            createArchive(archiveName, config);
+            logger.info("Storage location is: " + storageLocation);
+            createArchive(archiveName, config, storageLocation);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("IO Exception!", e);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            logger.error("Interrupted Exception! ", e);
         }
 
         /* Archive transfer */
         logger.info("Transfering archive to remote server");
-        transferArchiveToRemoteServer(config, archiveName, "-f".equals(type) ? FOLDER_FULL.getText() :
-                FOLDER_INCREMENTAL.getText());
+        transferArchiveToRemoteServer(config, storageLocation, "-f".equals(type) ? FOLDER_FULL.getText() :
+                FOLDER_INCREMENTAL.getText(), archiveName);
 
         /* remove the archive with given name afterwards when the backup is done */
         if (config.getBackup().getKeepOnLocalServer() != null && !config.getBackup().getKeepOnLocalServer()) {
-            deleteArchive(archiveName);
+            deleteArchive(storageLocation + archiveName);
         }
     }
 
-    private void transferArchiveToRemoteServer(ConfigObject config, String archiveName, String folderType) throws JSchException {
+    private void transferArchiveToRemoteServer(ConfigObject config, String archivePath, String folderType, String archiveName) throws JSchException {
 
         // TODO: add logger and separate those lines into new method
 
         /* This part is gonna be retrieved from the config file! */
-        String userName = "webbackup";
+        String userName = config.getMain().getUsername();
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
         int port = 22;
-        String pwd = "Ondrej123";
+        String pwd = config.getMain().getPassword();
 
         logger.info("Creating connection");
         Connection connection = new Connection(userName, remoteServAddr, port, pwd);
@@ -70,13 +76,17 @@ public class Backup {
         /* It is expected that the remote storage location does contain the path delimiter in the end! */
         logger.info("Destination folder: ");
         String destinationFolder = config.getStorage().getRemoteStorageLocation()
+                + PATH_DELIMITER.getText()
                 + config.getMain().getSiteId()
                 + PATH_DELIMITER.getText()
                 + MAIN_BACKUPS_FOLDER.getText()
-                + (FOLDER_FULL.getText().equals(folderType) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText());
+                + PATH_DELIMITER.getText()
+                + (FOLDER_FULL.getText().equals(folderType) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText())
+                + PATH_DELIMITER.getText()
+                + archiveName;
         logger.info(destinationFolder);
         try {
-            sftpChannel.put(destinationFolder, archiveName);
+            sftpChannel.put(archivePath + archiveName, destinationFolder);
             logger.info("Transfer successfully done.");
         } catch (SftpException e) {
             logger.error("Transfer aborted ", e);
@@ -85,12 +95,12 @@ public class Backup {
         connection.disconnect();
     }
 
-    private void deleteArchive(String archiveName) {
-        logger.info("DELETING ARCHIVE: " + archiveName);
+    private void deleteArchive(String archiveLocation) {
+        logger.info("DELETING ARCHIVE: " + archiveLocation);
         try {
             Process process = Runtime
                     .getRuntime()
-                    .exec("rm - r " + archiveName);
+                    .exec("rm - r " + archiveLocation);
             process.waitFor();
             logger.info("Successfully deleted.");
         } catch (IOException e) {
@@ -108,11 +118,12 @@ public class Backup {
      * @param archiveName The name of the archive that is created
      * @param config      The configuration file of given site
      */
-    private void createArchive(String archiveName, ConfigObject config) throws IOException, InterruptedException, NoValidDataException {
+    private void createArchive(String archiveName, ConfigObject config, String storageLocation) throws IOException, InterruptedException, NoValidDataException {
         // processes the backup
         logger.info("Creating archive: ");
         String executable = ZIP_INSTALLED_PATH + " a -t7z " + archiveName + " "
-                + String.join(" ", config.getBackup().getIncludedPaths());
+                + String.join(" ", config.getBackup().getIncludedPaths()
+        );
 
         // in default the main directory of the site with the * wildcard has to be set! Mandatory field!
         if (config.getBackup().getIncludedPaths().isEmpty()) {
@@ -132,7 +143,14 @@ public class Backup {
                 .exec(executable); // excluded files
         logger.info("Backup file successfully created");
         process.waitFor();
-        // TODO: add log here
+
+        // move zip to desired directory
+        String move = "mv " + archiveName + " " + storageLocation;
+        logger.info("Moving zip file to destination folder");
+        logger.info(storageLocation);
+        Process proc = Runtime.getRuntime().exec(move);
+        proc.waitFor();
+        logger.info("Moving completed");
 
     }
 
