@@ -15,14 +15,14 @@
 
 # Example of config file
 [main]
-	password = "qwerty"
+	password = "Ondrej123"
 	site_id = "test"
-	admin_email_address = "example@email.com"
-	local_server_id = "localServer"
-	username = "login"
+	admin_email_address = "nemam@emailHAHA.xd"
+	local_server_id = "testingServer"
+	username = "webbackup"
 
 [storage]
-	remote_storage_address = "username@com puter"
-	local_storage_location = "/home/backups"
-	remote_storage_location = "/home/backups"
+	remote_storage_address = "capek.ii.fmph.uniba.sk"
+	local_storage_location = "/home/yarvelian/backups"
+	remote_storage_location = "/home/webbackup/backups"
 

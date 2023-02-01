@@ -7,7 +7,7 @@ public enum GlobalConstants {
     FOLDER_FULL("full"),
     FULL_TYPE_NAME("full"),
     MAIN_BACKUPS_FOLDER("backups"),
-    PATH_DELIMITER("\\")
+    PATH_DELIMITER("/")
     ;
 
     private final String text;

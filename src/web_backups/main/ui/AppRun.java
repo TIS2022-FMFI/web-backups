@@ -276,7 +276,7 @@ public class AppRun {
      */
     private void listBackups(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
-
+        // TODO TEST
         if (enteredFlag.isEmpty()) {
             ListUtils.getInstance().listBackups(ROOT, "-b", "");
         }
@@ -294,6 +294,7 @@ public class AppRun {
      */
     private void listSites(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
+        // TODO TEST AND ADAPT
         if (enteredFlag.isEmpty() || (enteredFlag.containsKey("e") && enteredFlag.get("e").equals("true"))) {
             ListUtils.getInstance().listSites(ROOT, "", "", "-e");
         }
@@ -307,6 +308,7 @@ public class AppRun {
         if (context.getArgs().size() < 2 || context.getArg(2) == null) {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
+        // TODO ADD, TEST AND ADAPT
         System.out.println("execute!!!!");
     }
 

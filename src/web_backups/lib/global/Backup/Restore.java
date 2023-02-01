@@ -36,7 +36,7 @@ public class Restore {
     public void restore(ConfigObject config, String siteName, String backupId) throws JSchException, SftpException {
         // the zip file with given backup Id is stored on the localserver site location
         logger.info("STARTING SITE RESTORE");
-        retrieveZipFileFromRemoteServer(config, siteName, backupId);
+        retrieveZipFileFromRemoteServer(config, siteName, backupId); // TODO add path to the site name
 
         // restore process on local machine
         try {
