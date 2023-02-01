@@ -1,5 +1,7 @@
 package web_backups.main.ui;
 
+import com.electronwill.nightconfig.core.Config;
+import com.electronwill.nightconfig.core.file.FileConfig;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.SftpException;
 import web_backups.lib.global.Backup.Backup;
@@ -13,13 +15,13 @@ import web_backups.main.ui.mailSender.MailSender;
 import web_backups.main.ui.menuOptions.Help;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import static web_backups.lib.global.enums.ExceptionMessage.INVALID_COMMAND;
-import static web_backups.lib.global.enums.ExceptionMessage.INVALID_OPTION;
+import static web_backups.lib.global.enums.ExceptionMessage.*;
 import static web_backups.lib.global.enums.TextColors.*;
 
 public class AppRun {
@@ -311,11 +313,52 @@ public class AppRun {
     }
 
     private void setPeriod(Context context) {
+        if (context.getArgs().size() == 0 || context.getArg(1) == null) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
+        String[] numbers = context.getArg(1).getValue().split(",");
+        List<String> validNumbers = new ArrayList<>();
 
+        for (String number : numbers) {
+            try {
+                Integer.parseInt(number);
+                validNumbers.add(number);
+            } catch (NumberFormatException e) {
+                throw new NoValidDataException("Invalid number in set-period command: " + number);
+            }
+        }
+
+        File file = new File("testConfig.toml");
+        if (!file.exists()) {
+            throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg() + " testConfig.toml");
+        }
+
+        FileConfig config = FileConfig.of("testConfig.toml");
+        config.load();
+        config.set("backup.full_backup_periods", validNumbers);
+        config.save();
+        config.close();
     }
 
     private void setSwitch(Context context) {
+        if (context.getArgs().size() == 0 || context.getArg(1) == null) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
+        String stringValue = context.getArg(1).getValue();
+        boolean boolValue;
+        if (Objects.equals(stringValue, "1") || Objects.equals(stringValue, "true")) {
+            boolValue = true;
+        } else if (Objects.equals(stringValue, "0") || Objects.equals(stringValue, "false")) {
+            boolValue = false;
+        } else {
+            throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg() + " testConfig.toml");
+        }
 
+        FileConfig config = FileConfig.of("testConfig.toml");
+        config.load();
+        config.set("backup.keep_on_local_server", boolValue);
+        config.save();
+        config.close();
     }
 
     private void auto(Context context) throws JSchException {

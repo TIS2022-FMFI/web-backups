@@ -1,38 +1,28 @@
-# Example of config file
-
-[main]
-site_id = "test"
-admin_email_address = "example@email.com"
-
-local_server_id = "localServer"
 
 [backup]
-full_backup_periods = ["180", "90", "7"]
-incremental_backup_period = "1"
-incremental_backup_time = ["04:20"]
-keep_on_local_server = true
-pre_backup_script = "/home/siteScripts/preBackup.script"
-post_backup_script = ""
-included_paths = [
-    "/home/yarvelian/Desktop/backupThis/file*.txt"
-]
-excluded_paths = [
-
-]
+	incremental_backup_time = ["04:20"]
+	included_paths = ["/home/yarvelian/Desktop/backupThis/file*.txt"]
+	keep_on_local_server = false
+	full_backup_periods = ["181", "91", "8"]
+	excluded_paths = []
+	pre_backup_script = "/home/siteScripts/preBackup.script"
+	incremental_backup_period = "1"
+	post_backup_script = ""
 
 [restore]
-pre_restore_script = ""
-post_restore_script = ""
+	pre_restore_script = ""
+	post_restore_script = ""
 
+# Example of config file
+[main]
+	password = "qwerty"
+	site_id = "test"
+	admin_email_address = "example@email.com"
+	local_server_id = "localServer"
+	username = "login"
 
 [storage]
-remote_storage_address = "username@computer"
-local_storage_location = "/home/backups"
-remote_storage_location = "/home/backups"
-
-
-
-
-
-
+	remote_storage_address = "username@com puter"
+	local_storage_location = "/home/backups"
+	remote_storage_location = "/home/backups"
 
