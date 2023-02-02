@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import static web_backups.lib.global.Constants.GlobalConstants.*;
 import static web_backups.lib.global.enums.ExceptionMessage.FILE_NOT_FOUND;
@@ -31,16 +32,22 @@ public class Restore {
     /**
      * @param config
      * @param backupId The backup zip name from the root site folder. i.e. full/fullBackup-xyz.7z on remote server
-     * @param siteName
      */
-    public void restore(ConfigObject config, String siteName, String backupId) throws JSchException, SftpException {
+    public void restore(ConfigObject config, String backupId, String destinationFolder) throws JSchException, SftpException {
         // the zip file with given backup Id is stored on the localserver site location
         logger.info("STARTING SITE RESTORE");
-        retrieveZipFileFromRemoteServer(config, siteName, backupId); // TODO add path to the site name
+
+        retrieveZipFileFromRemoteServer(config, backupId);
 
         // restore process on local machine
         try {
-            Process process = Runtime.getRuntime().exec("7z x " + config.getStorage().getLocalStorageLocation());
+            String executable = "7z x "
+                    + config.getStorage().getLocalStorageLocation()
+                    + PATH_DELIMITER.getText()
+                    + backupId
+                    + " -o"
+                    + destinationFolder;
+            Process process = Runtime.getRuntime().exec(executable);
             process.waitFor();
         } catch (IOException e) {
             e.printStackTrace();
@@ -49,11 +56,14 @@ public class Restore {
         }
     }
 
-    public void restoreFiles(ConfigObject config, String siteName, String backupId, String filePath) throws JSchException, SftpException, IOException, InterruptedException {
-        logger.info("Restoring files for site name: " + siteName);
-        retrieveZipFileFromRemoteServer(config, siteName, backupId);
-        String outputPath = config.getStorage().getLocalStorageLocation();
-        String inputZip = backupId;
+    public void restoreFiles(ConfigObject config, String backupId, String filePath, String destinationFolder) throws JSchException, SftpException, IOException, InterruptedException {
+        logger.info("Restoring files for site name: " + config.getMain().getSiteId());
+
+        retrieveZipFileFromRemoteServer(config, backupId);
+
+        String inputZip = config.getStorage().getLocalStorageLocation()
+                + PATH_DELIMITER.getText()
+                + backupId;
 
         /* Clarify whether the restore is being made from a remote server or not! If yes, adapt the config file with localAddress! */
         File file = new File(filePath);
@@ -63,55 +73,79 @@ public class Restore {
         }
         FileReader fr = new FileReader(file);
         BufferedReader br = new BufferedReader(fr);
-        StringBuffer sb = new StringBuffer();
+        ArrayList files = new ArrayList();
 
         String line;
         while ((line = br.readLine()) != null) {
-            sb.append(line);
+            files.add(line);
         }
 
         br.close();
         fr.close();
 
         logger.info("Retrieving files from directory.");
-        Process process = Runtime.getRuntime().exec("7z x -o" + outputPath + " " + inputZip + sb);
-        process.waitFor();
+        files.forEach(fileName -> {
+            Process process = null;
+            try {
+                String executable = "7z x "
+                        + config.getStorage().getLocalStorageLocation()
+                        + PATH_DELIMITER.getText()
+                        + backupId
+                        + " "
+                        + fileName
+                        + " -o"
+                        + destinationFolder;
+                process = Runtime.getRuntime().exec(executable);
+            } catch (IOException e) {
+                logger.error("IO Exception", e);
+                throw new RuntimeException(e);
+            }
+            try {
+                process.waitFor();
+                logger.info("File " + fileName + " retrieved");
+            } catch (InterruptedException e) {
+                logger.error("Interrupt exception", e);
+                throw new RuntimeException(e);
+            }
+        });
         logger.info("Restore finished.");
     }
 
-    private String getZipFilePath(ConfigObject config, String storage, String siteName, String backupId, String folder) {
-        return storage
+    private String getZipFilePath(ConfigObject config, String backupId) {
+        return config.getStorage().getRemoteStorageLocation()
                 + PATH_DELIMITER.getText()
-                + siteName
+                + config.getMain().getSiteId()
                 + PATH_DELIMITER.getText()
                 + MAIN_BACKUPS_FOLDER.getText()
-                + folder
-                + backupId;
+                + PATH_DELIMITER.getText()
+                + (backupId.contains(FOLDER_FULL.getText()) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText())
+                + PATH_DELIMITER.getText()
+                + backupId
+                ;
     }
 
     /**
-     * Method retrieves the zip file of given siteName and backupId to the local server on local storage specified in the config file
-     * */
-    private void retrieveZipFileFromRemoteServer(ConfigObject config, String siteName, String backupId) throws JSchException, SftpException {
-        /* This part is gonna be retrieved from the config file! */
-        String userName = "";
+     * Method retrieves the zip file of given site from config and backupId to the local server on local storage specified in the config file
+     */
+    private void retrieveZipFileFromRemoteServer(ConfigObject config, String backupId) throws JSchException, SftpException {
+
+        String userName = config.getMain().getUsername();
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
         int port = 22;
-        String pwd = "";
+        String pwd = config.getMain().getPassword();
 
-        // TODO: add UserName to the config
-
+        // connection
+        logger.info("Creating connection");
         Connection connection = new Connection(userName, remoteServAddr, port, pwd);
         connection.connect();
         ChannelSftp sftpChannel = connection.getSftpChannel();
 
-        String folder = backupId.contains("full") ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText();
-        String zipFilePath = getZipFilePath(config, config.getStorage().getRemoteStorageLocation(), siteName, backupId, folder);
+        String zipFilePath = getZipFilePath(config, backupId);
 
         logger.info("Retrieving file: " + zipFilePath);
-        sftpChannel.get(zipFilePath, config.getStorage().getLocalStorageLocation());
+        sftpChannel.get(zipFilePath, config.getStorage().getLocalStorageLocation() + PATH_DELIMITER.getText());
 
-        // logger.log
+        logger.info("DISCONNECTING!");
         connection.disconnect();
     }
 

@@ -1,0 +1,28 @@
+
+[backup]
+	incremental_backup_time = ["04:20"]
+	included_paths = ["/home/yarvelian/Desktop/backupThis/file*.txt"]
+	keep_on_local_server = false
+	full_backup_periods = ["181", "91", "8"]
+	excluded_paths = []
+	pre_backup_script = "/home/siteScripts/preBackup.script"
+	incremental_backup_period = "1"
+	post_backup_script = ""
+
+[restore]
+	pre_restore_script = ""
+	post_restore_script = ""
+
+# Example of config file
+[main]
+	password = "Ondrej123"
+	site_id = "test"
+	admin_email_address = "nemam@emailHAHA.xd"
+	local_server_id = "testingServer"
+	username = "webbackup"
+
+[storage]
+	remote_storage_address = "capek.ii.fmph.uniba.sk"
+	local_storage_location = "/home/yarvelian/backups"
+	remote_storage_location = "/home/webbackup/backups"
+

@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static web_backups.lib.global.Constants.GlobalConstants.PATH_DELIMITER;
 import static web_backups.lib.global.enums.ExceptionMessage.*;
 import static web_backups.lib.global.enums.TextColors.*;
 
@@ -130,7 +131,20 @@ public class AppRun {
                 .setUsage("Restores specific file(s) (if exists) from a .txt file")
                 .addArg(1, args.get("[file.txt]"))
                 .addArg(2, args.get("[file_path]"))
-                .setExecutor(this::restoreFiles)
+                .setExecutor(ctx -> {
+                            try {
+                                restoreFiles(ctx);
+                            } catch (JSchException e) {
+                                e.printStackTrace();
+                            } catch (SftpException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                )
                 .build());
         commandList.add(Command.builder()
                 .setName("enable")
@@ -252,13 +266,11 @@ public class AppRun {
         } else if (enteredFlag.containsKey("i")) {
             type = "-i";
         } else {
-            // logger.log
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
 
         Backup.getInstance().backupFiles(config, type);
 
-        // TODO: Perform backup cleanup when automatic backup gets finished
         System.out.println(" Backup Done. ");
     }
 
@@ -266,8 +278,8 @@ public class AppRun {
         if (context.getArgs().size() < 2 || context.getArg(2) == null) {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
-        // config, backupId, File.txt containing files to be restored.
-        Restore.getInstance().restore(config, context.getArg(1).getValue(), context.getArg(2).getValue());
+        // config, backupId, destination
+        Restore.getInstance().restore(getConfig(), context.getArg(1).getValue(), context.getArg(2).getValue());
     }
 
     /**
@@ -276,15 +288,15 @@ public class AppRun {
      */
     private void listBackups(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
-        // TODO TEST
+
         if (enteredFlag.isEmpty()) {
-            ListUtils.getInstance().listBackups(ROOT, "-b", "");
+            ListUtils.getInstance().listBackups(getConfig().getStorage().getLocalStorageLocation(), "-b", "");
         }
         if (enteredFlag.containsKey("i")) {
-            ListUtils.getInstance().listBackups(ROOT, "-i", "");
+            ListUtils.getInstance().listBackups(getConfig().getStorage().getLocalStorageLocation(), "-i", "");
         }
         if (enteredFlag.containsKey("f")) {
-            ListUtils.getInstance().listBackups(ROOT, "-f", "");
+            ListUtils.getInstance().listBackups(getConfig().getStorage().getLocalStorageLocation(), "-f", "");
         }
     }
 
@@ -294,22 +306,24 @@ public class AppRun {
      */
     private void listSites(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
-        // TODO TEST AND ADAPT
         if (enteredFlag.isEmpty() || (enteredFlag.containsKey("e") && enteredFlag.get("e").equals("true"))) {
-            ListUtils.getInstance().listSites(ROOT, "", "", "-e");
+            ListUtils.getInstance().listSites(getConfig().getStorage().getLocalStorageLocation(), "", "", "-e");
         }
         if (enteredFlag.containsKey("d") && enteredFlag.get("d").equals("true")) {
-            ListUtils.getInstance().listSites(ROOT, "", "", "-d");
+            ListUtils.getInstance().listSites(getConfig().getStorage().getLocalStorageLocation(), "", "", "-d");
         }
 
     }
 
-    private void restoreFiles(Context context) {
-        if (context.getArgs().size() < 2 || context.getArg(2) == null) {
+    private void restoreFiles(Context context) throws JSchException, SftpException, IOException, InterruptedException {
+        if (context.getArgs().size() != 3) {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
-        // TODO ADD, TEST AND ADAPT
-        System.out.println("execute!!!!");
+        Restore.getInstance().restoreFiles(tomlParser.getConfigObject(),
+                context.getArg(1).getValue(),
+                context.getArg(2).getValue(),
+                context.getArg(3).getValue()
+        );
     }
 
     private void enable(Context context) {
