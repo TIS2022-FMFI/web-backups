@@ -58,9 +58,6 @@ public class Backup {
 
     private void transferArchiveToRemoteServer(ConfigObject config, String archivePath, String folderType, String archiveName) throws JSchException {
 
-        // TODO: add logger and separate those lines into new method
-
-        /* This part is gonna be retrieved from the config file! */
         String userName = config.getMain().getUsername();
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
         int port = 22;
@@ -70,8 +67,6 @@ public class Backup {
         Connection connection = new Connection(userName, remoteServAddr, port, pwd);
         connection.connect();
         ChannelSftp sftpChannel = connection.getSftpChannel();
-
-        // TODO: traverse the FS to find the file
 
         /* It is expected that the remote storage location does contain the path delimiter in the end! */
         logger.info("Destination folder: ");
