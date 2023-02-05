@@ -26,16 +26,23 @@ public class Backup {
         return INSTANCE;
     }
 
-    public void backupFiles(ConfigObject config, String type) throws JSchException {
-        String backupType = "-i".equals(type) ? INCREMENTAL_TYPE_NAME.getText() : FULL_TYPE_NAME.getText();
+    public void backupFiles(ConfigObject config, String type, String period, String siteName) throws JSchException {
+        String backupType = "-i".equals(type) ? FOLDER_INCREMENTAL.getText() : FOLDER_FULL.getText();
         logger.info("BACKING UP FILES WITH TYPE: " + backupType);
-        String archiveName = getArchiveNameByType(backupType, config);
+        String archiveName = getArchiveNameByType(backupType, config, siteName);
 
         /* Archive creation */
         String storageLocation = config.getStorage().getLocalStorageLocation()
                 + PATH_DELIMITER.getText()
+                + MAIN_BACKUPS_FOLDER.getText()
+                + PATH_DELIMITER.getText()
+                + siteName
+                + PATH_DELIMITER.getText()
                 + backupType
                 + PATH_DELIMITER.getText();
+        if (period != null && !period.isEmpty()) {
+            storageLocation += PATH_DELIMITER.getText() + period;
+        }
         try {
             logger.info("Storage location is: " + storageLocation);
             createArchive(archiveName, config, storageLocation);
@@ -48,7 +55,7 @@ public class Backup {
         /* Archive transfer */
         logger.info("Transfering archive to remote server");
         transferArchiveToRemoteServer(config, storageLocation, "-f".equals(type) ? FOLDER_FULL.getText() :
-                FOLDER_INCREMENTAL.getText(), archiveName);
+                FOLDER_INCREMENTAL.getText(), archiveName, period, siteName);
 
         /* remove the archive with given name afterwards when the backup is done */
         if (config.getBackup().getKeepOnLocalServer() != null && !config.getBackup().getKeepOnLocalServer()) {
@@ -56,7 +63,8 @@ public class Backup {
         }
     }
 
-    private void transferArchiveToRemoteServer(ConfigObject config, String archivePath, String folderType, String archiveName) throws JSchException {
+    private void transferArchiveToRemoteServer(ConfigObject config, String archivePath, String folderType, String archiveName,
+                                               String period, String siteName) throws JSchException {
 
         String userName = config.getMain().getUsername();
         String remoteServAddr = config.getStorage().getRemoteStorageAddress();
@@ -72,12 +80,13 @@ public class Backup {
         logger.info("Destination folder: ");
         String destinationFolder = config.getStorage().getRemoteStorageLocation()
                 + PATH_DELIMITER.getText()
-                + config.getMain().getSiteId()
-                + PATH_DELIMITER.getText()
                 + MAIN_BACKUPS_FOLDER.getText()
+                + PATH_DELIMITER.getText()
+                + siteName
                 + PATH_DELIMITER.getText()
                 + (FOLDER_FULL.getText().equals(folderType) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText())
                 + PATH_DELIMITER.getText()
+                + (period != null && !period.isEmpty() ? period + PATH_DELIMITER.getText() : "")
                 + archiveName;
         logger.info(destinationFolder);
         try {
@@ -155,14 +164,14 @@ public class Backup {
      * @param type   Defines the substring type in the final zip name that is stored on remote server
      * @param config The configuration file of given site
      */
-    private String getArchiveNameByType(String type, ConfigObject config) {
+    private String getArchiveNameByType(String type, ConfigObject config, String siteName) {
         LocalDateTime currentTime = LocalDateTime.now();
         int day = currentTime.getDayOfMonth();
         int month = currentTime.getMonthValue();
         int year = currentTime.getYear();
 
         /* SiteName-Type-Date.7z */
-        return config.getMain().getSiteId() + "-" + type + year + "-" + month + "-" + day + ".7z";
+        return siteName + "-" + type + year + "-" + month + "-" + day + ".7z";
     }
 
 }

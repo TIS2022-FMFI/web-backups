@@ -15,6 +15,7 @@ import web_backups.lib.global.exceptions.NoValidDataException;
 import web_backups.main.ui.list.ListUtils;
 import web_backups.main.ui.mailSender.MailSender;
 import web_backups.main.ui.menuOptions.Help;
+import web_backups.main.ui.sites.ConfigFileUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -131,6 +132,7 @@ public class AppRun {
                 .setUsage("Restores specific file(s) (if exists) from a .txt file")
                 .addArg(1, args.get("[file.txt]"))
                 .addArg(2, args.get("[file_path]"))
+                .addArg(3, args.get("[dst_path]"))
                 .setExecutor(ctx -> {
                             try {
                                 restoreFiles(ctx);
@@ -213,6 +215,11 @@ public class AppRun {
                 .setPosition(2)
                 .setIsRequired(true)
                 .build()));
+        args.put("[dst_path]", (CommandArgument.builder()
+                .setName("file_path")
+                .setPosition(3)
+                .setIsRequired(true)
+                .build()));
         args.put("[period]", (CommandArgument.builder()
                 .setName("period")
                 .setPosition(1)
@@ -257,6 +264,12 @@ public class AppRun {
     }
 
 
+    /**
+     * Runs backup for a specific site and given config<br>
+     * i.e. wb backup site1 -i
+     * arg1: site1 - site name <br>
+     * flag1: -i - incremental type
+     */
     private void backup(Context context) throws JSchException {
         Map<String, String> enteredFlag = context.getFlagValues();
         String type = "";
@@ -269,11 +282,23 @@ public class AppRun {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
 
-        Backup.getInstance().backupFiles(config, type);
+        if (context.getArgs().size() < 1) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
+        String siteName = context.getArg(1).getValue();
+
+        Backup.getInstance().backupFiles(getConfig(), type, "", siteName);
 
         System.out.println(" Backup Done. ");
     }
 
+    /**
+     * Restores a file from remote server to desired destination
+     * i.e. wb restore site1-incremental2023-2-5.7z /home/yarvelian/appTesting/backups/site1/incremental <br>
+     * arg1: site1-incremental2013-2-5.7z - zip to retrieve from the root directory, site name set in config file. <br>
+     * arg2: path to extract files from zip <br>
+     * retrieved zip gets deleted after action <br>
+     */
     private void restore(Context context) throws JSchException, SftpException {
         if (context.getArgs().size() < 2 || context.getArg(2) == null) {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
@@ -303,6 +328,7 @@ public class AppRun {
     /**
      * Method that lists sites on the local server where the cron job/or the app is run
      * Usage: wb list-sites -e, wb list-sites -d
+     * default: wb list-sites, lists enabled sites.
      */
     private void listSites(Context context) throws IOException {
         Map<String, String> enteredFlag = context.getFlagValues();
@@ -315,6 +341,13 @@ public class AppRun {
 
     }
 
+    /**
+     * restores files named in a text file from a zip retrieved from a remote server to desired location.
+     * i.e. wb "site1-incremental2023-2-5.7z" /home/yarvelian/appTesting/filesToRestore.txt /home/yarvelian/appTesting/backups/site1/incremental/
+     * where:<br> arg1 "site1-incremental2023-2-5.7z": zip to be retrieved <br>
+     * arg2: /home/yarvelian/appTesting/filesToRestore.txt text file containing file names to be restored <br>
+     * arg3: /home/yarvelian/appTesting/backups/site1/incremental/ destination folder for files extraction.
+     */
     private void restoreFiles(Context context) throws JSchException, SftpException, IOException, InterruptedException {
         if (context.getArgs().size() != 3) {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
@@ -327,11 +360,21 @@ public class AppRun {
     }
 
     private void enable(Context context) {
-
+        if (context.getArgs().size() != 1) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
+        String siteName = context.getArg(1).getValue();
+        String rootDir = getConfig().getStorage().getLocalStorageLocation();
+        ConfigFileUtils.getInstance().enable(rootDir, siteName);
     }
 
     private void disable(Context context) {
-
+        if (context.getArgs().size() != 1) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
+        String siteName = context.getArg(1).getValue();
+        String rootDir = getConfig().getStorage().getLocalStorageLocation();
+        ConfigFileUtils.getInstance().disable(rootDir, siteName);
     }
 
     private void setPeriod(Context context) {
@@ -343,9 +386,11 @@ public class AppRun {
 
         for (String number : numbers) {
             try {
+                logger.info("Parsing period: " + number);
                 Integer.parseInt(number);
                 validNumbers.add(number);
             } catch (NumberFormatException e) {
+                logger.error("Wrong number format.");
                 throw new NoValidDataException("Invalid number in set-period command: " + number);
             }
         }
@@ -356,10 +401,15 @@ public class AppRun {
         }
 
         FileConfig config = FileConfig.of("testConfig.toml");
+        logger.info("Opening config.");
         config.load();
+        logger.info("adding periods.");
         config.set("backup.full_backup_periods", validNumbers);
         config.save();
+        logger.info("Closing config.");
         config.close();
+        logger.info("All periods added");
+        logger.info("Config closed.");
     }
 
     private void setSwitch(Context context) {
@@ -377,14 +427,20 @@ public class AppRun {
         }
 
         FileConfig config = FileConfig.of("testConfig.toml");
+        logger.info("Opening config.");
         config.load();
+        logger.info("Setting switch");
         config.set("backup.keep_on_local_server", boolValue);
         config.save();
+        logger.info("Closing config.");
         config.close();
+        logger.info("switch has been set.");
+        logger.info("Config closed.");
     }
 
     private void auto(Context context) throws JSchException {
-        Backup.getInstance().backupFiles(config, "-i");
+        String siteName = getConfig().getMain().getSiteId();
+        Backup.getInstance().backupFiles(config, "-i", "", siteName);
 
         // TODO check whether full is needed
 //        Backup.getInstance().backupFiles(config, "-f");

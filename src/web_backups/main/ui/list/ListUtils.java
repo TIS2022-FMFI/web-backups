@@ -33,10 +33,9 @@ public class ListUtils {
 
     private final Logger logger = LoggerFactory.getLogger(ListUtils.class);
 
-    private static final String FULL = "\\full";
-    private static final String BACKUPS = "\\backups";
-    private static final String SITES_ENABLED = "\\sites_enabled.txt";
-    private static final String SITES_DISABLED = "\\sites_disabled.txt";
+    private static final String BACKUPS = "/backups";
+    private static final String SITES_ENABLED = "sites_enabled.txt";
+    private static final String SITES_DISABLED = "sites_disabled.txt";
     private static final String EXIT_MSG = "*** ALL FILES HAVE BEEN LISTED ***";
 
     private static final ListUtils INSTANCE = new ListUtils();
@@ -64,7 +63,7 @@ public class ListUtils {
                 logger.error("Invalid flag for site " + siteName);
                 throw new NoValidDataException(INVALID_FLAG.getErrorMsg());
             }
-            List<Path> directories = Files.walk(Paths.get(root + BACKUPS), 1)
+            List<Path> directories = Files.walk(Paths.get(root + PATH_DELIMITER.getText() + BACKUPS), 1)
                     .filter(p -> Files.isDirectory(p) && !p.equals(Paths.get(root + BACKUPS)))
                     .collect(Collectors.toList());
 
@@ -173,7 +172,7 @@ public class ListUtils {
 
         List<String> sites;
         try {
-            sites = Files.readAllLines(Paths.get(rootFile.getPath() + getFlag(flag)), StandardCharsets.UTF_8);
+            sites = Files.readAllLines(Paths.get(rootFile.getPath() + PATH_DELIMITER.getText() + getFlag(flag)), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
         }
