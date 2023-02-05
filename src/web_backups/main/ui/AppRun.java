@@ -7,6 +7,7 @@ import com.jcraft.jsch.SftpException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import web_backups.lib.global.Backup.Backup;
+import web_backups.lib.global.Backup.BackupDaemon;
 import web_backups.lib.global.Backup.Restore;
 import web_backups.lib.global.CliParser.*;
 import web_backups.lib.global.TOMLParser.ConfigObject;
@@ -17,10 +18,7 @@ import web_backups.main.ui.mailSender.MailSender;
 import web_backups.main.ui.menuOptions.Help;
 import web_backups.main.ui.sites.ConfigFileUtils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -438,9 +436,35 @@ public class AppRun {
         logger.info("Config closed.");
     }
 
-    private void auto(Context context) throws JSchException {
+    /**
+     * Takes config name as argument to retrieve files enabled and run all jobs.
+     * PATH REQUIRED!
+     * */
+    private void auto(Context context) throws JSchException, SftpException, IOException, InterruptedException {
+        if (context.getArgs().size() != 1) {
+            throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
+        }
         String siteName = getConfig().getMain().getSiteId();
-        Backup.getInstance().backupFiles(config, "-i", "", siteName);
+
+        File file = new File(getConfig().getStorage().getLocalStorageLocation() + "sites_enabled.txt");
+        if (!file.exists()) {
+            logger.error(FILE_NOT_FOUND.getErrorMsg());
+            throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
+        }
+        FileReader fr = new FileReader(file);
+        BufferedReader br = new BufferedReader(fr);
+        ArrayList files = new ArrayList();
+
+        String line;
+        while ((line = br.readLine()) != null) {
+            files.add(line);
+        }
+
+        br.close();
+        fr.close();
+        // TODO ASK ABOUT CONFIG STRUCTURE
+        BackupDaemon.getInstance().runBackup(getConfig());
+
 
         // TODO check whether full is needed
 //        Backup.getInstance().backupFiles(config, "-f");
@@ -534,6 +558,10 @@ public class AppRun {
             tomlParser = new TomlParser("testConfig.toml");
         }
         return tomlParser;
+    }
+
+    private ConfigObject getConfigBySiteName(String name) {
+        return new TomlParser(name).getConfigObject();
     }
 
 }

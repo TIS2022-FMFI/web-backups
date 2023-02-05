@@ -41,7 +41,7 @@ public class Backup {
                 + backupType
                 + PATH_DELIMITER.getText();
         if (period != null && !period.isEmpty()) {
-            storageLocation += PATH_DELIMITER.getText() + period;
+            storageLocation += period + PATH_DELIMITER.getText();
         }
         try {
             logger.info("Storage location is: " + storageLocation);
