@@ -1,31 +1,60 @@
 package web_backups.main.ui.sites;
 
-import web_backups.lib.global.TOMLParser.ConfigObject;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import static web_backups.lib.global.Constants.GlobalConstants.PATH_DELIMITER;
 
 public class ConfigFileUtils {
 
     private static final ConfigFileUtils INSTANCE = new ConfigFileUtils();
     private static final String ENABLED = "sites_enabled.txt";
-    private static final String DISABLED = "sites_disabled.txt";
 
     public static ConfigFileUtils getInstance() {
         return INSTANCE;
     }
 
-    private void enable(ConfigObject config, String rootAddr, String siteName) {
-
+    public void enable(String rootAddr, String siteName) {
+        List<String> lines = readFile(rootAddr);
+        if (!lines.contains(siteName)) {
+            lines.add(siteName);
+            writeFile(lines, rootAddr);
+        }
     }
 
-    private void disable(ConfigObject config, String rootAddr, String siteName) {
-
+    public void disable(String rootAddr, String siteName) {
+        List<String> lines = readFile(rootAddr);
+        if (lines.contains(siteName)) {
+            lines.remove(siteName);
+            writeFile(lines, rootAddr);
+        }
     }
 
-    public void setPeriod(ConfigObject config, String rootAddr, String period) {
-
+    private List<String> readFile(String rootAddr) {
+        List<String> lines = new ArrayList<>();
+        try (BufferedReader reader =
+                     new BufferedReader(new FileReader(rootAddr + PATH_DELIMITER.getText() + ENABLED))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+        }
+        return lines;
     }
 
-    public void setSwitch(ConfigObject config, String rootAddr, int switchNumber) {
-
+    private void writeFile(List<String> lines, String rootAddr) {
+        try (BufferedWriter writer =
+                     new BufferedWriter(new FileWriter(rootAddr + PATH_DELIMITER.getText() + ENABLED))) {
+            for (String line : lines) {
+                writer.write(line);
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            System.err.println("Error writing file: " + e.getMessage());
+        }
     }
 
 }
