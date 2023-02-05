@@ -54,6 +54,23 @@ public class Restore {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        removeTransferedZipFileLocally(config, backupId);
+    }
+
+    private void removeTransferedZipFileLocally(ConfigObject config, String archiveName) {
+        String dst = config.getStorage().getLocalStorageLocation() + PATH_DELIMITER.getText() + archiveName;
+        logger.info("DELETING ARCHIVE THAT HAS BEEN TRANSFERED TO LOCAL SERVER: " + dst);
+        try {
+            Process process = Runtime
+                    .getRuntime()
+                    .exec("rm - r " + dst);
+            process.waitFor();
+            logger.info("Successfully deleted.");
+        } catch (IOException e) {
+            logger.error("IO EXCEPTION! ", e);
+        } catch (InterruptedException e) {
+            logger.error("INTERRUPT EXCEPTION! ", e);
+        }
     }
 
     public void restoreFiles(ConfigObject config, String backupId, String filePath, String destinationFolder) throws JSchException, SftpException, IOException, InterruptedException {
@@ -65,7 +82,7 @@ public class Restore {
                 + PATH_DELIMITER.getText()
                 + backupId;
 
-        /* Clarify whether the restore is being made from a remote server or not! If yes, adapt the config file with localAddress! */
+        /* The zip is being retrieved from remote server and then extracted locally */
         File file = new File(filePath);
         if (!file.exists()) {
             logger.error(FILE_NOT_FOUND.getErrorMsg());
@@ -114,9 +131,9 @@ public class Restore {
     private String getZipFilePath(ConfigObject config, String backupId) {
         return config.getStorage().getRemoteStorageLocation()
                 + PATH_DELIMITER.getText()
-                + config.getMain().getSiteId()
-                + PATH_DELIMITER.getText()
                 + MAIN_BACKUPS_FOLDER.getText()
+                + PATH_DELIMITER.getText()
+                + config.getMain().getSiteId()
                 + PATH_DELIMITER.getText()
                 + (backupId.contains(FOLDER_FULL.getText()) ? FOLDER_FULL.getText() : FOLDER_INCREMENTAL.getText())
                 + PATH_DELIMITER.getText()
