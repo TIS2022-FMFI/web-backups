@@ -25,4 +25,5 @@
 	remote_storage_address = "capek.ii.fmph.uniba.sk"
 	local_storage_location = "/home/yarvelian/appTesting"
 	remote_storage_location = "/home/webbackup"
+	config_files_location = "/home/yarvelian/configs"
 

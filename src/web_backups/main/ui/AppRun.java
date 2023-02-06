@@ -21,6 +21,7 @@ import web_backups.main.ui.sites.ConfigFileUtils;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static web_backups.lib.global.Constants.GlobalConstants.PATH_DELIMITER;
 import static web_backups.lib.global.enums.ExceptionMessage.*;
@@ -178,6 +179,12 @@ public class AppRun {
                                 auto(ctx);
                             } catch (JSchException e) {
                                 e.printStackTrace();
+                            } catch (SftpException e) {
+                                throw new RuntimeException(e);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
                             }
                         }
                 )
@@ -441,34 +448,30 @@ public class AppRun {
      * PATH REQUIRED!
      * */
     private void auto(Context context) throws JSchException, SftpException, IOException, InterruptedException {
-        if (context.getArgs().size() != 1) {
+        if (context.getArgs().size() != 0) {
             throw new NoValidDataException(INVALID_OPTION.getErrorMsg());
         }
-        String siteName = getConfig().getMain().getSiteId();
 
-        File file = new File(getConfig().getStorage().getLocalStorageLocation() + "sites_enabled.txt");
+        File file = new File(getConfig().getStorage().getLocalStorageLocation() + PATH_DELIMITER.getText() + "sites_enabled.txt");
         if (!file.exists()) {
             logger.error(FILE_NOT_FOUND.getErrorMsg());
             throw new NoValidDataException(FILE_NOT_FOUND.getErrorMsg());
         }
         FileReader fr = new FileReader(file);
         BufferedReader br = new BufferedReader(fr);
-        ArrayList files = new ArrayList();
+        ArrayList<String> sitesToBackup = new ArrayList();
 
         String line;
         while ((line = br.readLine()) != null) {
-            files.add(line);
+            sitesToBackup.add(config.getStorage().getConfigFilesLocation() + PATH_DELIMITER.getText() + line + ".toml");
         }
 
         br.close();
         fr.close();
-        // TODO ASK ABOUT CONFIG STRUCTURE
-        BackupDaemon.getInstance().runBackup(getConfig());
 
-
-        // TODO check whether full is needed
-//        Backup.getInstance().backupFiles(config, "-f");
-
+        for (String config : sitesToBackup) {
+            BackupDaemon.getInstance().runBackup(getConfigBySiteName(config));
+        }
     }
 
     /**

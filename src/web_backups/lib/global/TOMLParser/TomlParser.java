@@ -66,7 +66,8 @@ public class TomlParser {
         String remoteStorageAddress = config.get("storage.remote_storage_address");
         String localStorageLocation = config.get("storage.local_storage_location");
         String remoteStorageLocation = config.get("storage.remote_storage_location");
+        String configFilesLocation = config.get("storage.config_files_location");
 
-        return new StorageConfigPart(remoteStorageAddress, localStorageLocation, remoteStorageLocation);
+        return new StorageConfigPart(remoteStorageAddress, localStorageLocation, remoteStorageLocation, configFilesLocation);
     }
 }
